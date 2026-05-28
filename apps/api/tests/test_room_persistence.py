@@ -65,6 +65,7 @@ def test_restarted_room_manager_restores_lobby_demo_state(tmp_path):
 
     assert snapshot["room"]["roomCode"] == created.room.room_code
     assert snapshot["room"]["players"][0]["connected"] is False
+    assert snapshot["game"]["players"][0]["connected"] is False
     assert snapshot["game"]["messages"] == [
         {"playerId": created.player.player_id, "name": "Ada", "message": "hello"}
     ]

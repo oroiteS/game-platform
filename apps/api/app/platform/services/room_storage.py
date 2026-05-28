@@ -15,6 +15,8 @@ class RoomStorageError(RuntimeError):
 
 
 class RoomStorage(Protocol):
+    loads_saved_connection_state: bool
+
     def list_room_codes(self) -> set[str]:
         ...
 
@@ -29,6 +31,8 @@ class RoomStorage(Protocol):
 
 
 class InMemoryRoomStorage:
+    loads_saved_connection_state = False
+
     def __init__(self) -> None:
         self._rooms: dict[str, Room] = {}
 
@@ -63,6 +67,8 @@ def _datetime_from_text(value: str | None) -> datetime | None:
 
 
 class SQLiteRoomStorage:
+    loads_saved_connection_state = True
+
     def __init__(self, database_path: str | Path) -> None:
         self.database_path = Path(database_path)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,7 +102,7 @@ class SQLiteRoomStorage:
                 nickname=row["nickname"],
                 session_token_hash=row["session_token_hash"],
                 connection_id=None,
-                connected=False,
+                connected=bool(row["connected"]),
                 disconnected_at=_datetime_from_text(row["disconnected_at"]),
                 last_seen_at=_datetime_from_text(row["last_seen_at"]),
             )

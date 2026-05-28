@@ -33,6 +33,8 @@ class RoomManager:
     ) -> None:
         self._games = games if games is not None else create_game_registry()
         self._storage = storage if storage is not None else InMemoryRoomStorage()
+        if getattr(self._storage, "loads_saved_connection_state", False):
+            self._mark_restored_rooms_disconnected()
 
     @property
     def platform_room_capacity(self) -> int:
@@ -172,6 +174,31 @@ class RoomManager:
         if game is None:
             raise PlatformError("game_not_found", "Game was not found.", 404)
         return game
+
+    def _mark_restored_rooms_disconnected(self) -> None:
+        disconnected_at = _utc_now()
+        for room_code in self._storage.list_room_codes():
+            room = self._storage.get_room(room_code)
+            if room is None:
+                continue
+
+            game = self._get_game(room.game_id)
+            changed = False
+            for player in room.players:
+                if not player.connected and player.connection_id is None:
+                    continue
+
+                player.connected = False
+                player.connection_id = None
+                player.disconnected_at = player.disconnected_at or disconnected_at
+                player.last_seen_at = disconnected_at
+                result = game.module.on_player_disconnect(room.game_state, player.to_game_dict())
+                room.game_state = result.get("state", room.game_state)
+                changed = True
+
+            if changed:
+                room.updated_at = disconnected_at
+                self._storage.save_room(room)
 
     def _get_room_by_code(self, room_code: str) -> Room:
         if not self._is_valid_room_code(room_code):
