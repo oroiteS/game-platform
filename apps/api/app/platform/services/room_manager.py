@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from importlib import import_module
 import random
 import string
-from types import ModuleType
 from typing import Any
 from uuid import uuid4
 
+from app.games.registry import GameRegistration, create_game_registry
 from app.platform.errors import PlatformError
 from app.platform.models import JoinResult, Player, Room
 from app.platform.services.session_tokens import (
@@ -22,54 +20,13 @@ MAX_NICKNAME_LENGTH = 24
 PLATFORM_ROOM_CAPACITY = 30
 
 
-@dataclass(frozen=True)
-class GameRegistration:
-    game_id: str
-    name: str
-    summary: str
-    rules: str
-    min_players: int
-    max_players: int
-    module: ModuleType
-
-    def to_list_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.game_id,
-            "name": self.name,
-            "summary": self.summary,
-            "minPlayers": self.min_players,
-            "maxPlayers": self.max_players,
-        }
-
-    def to_info_dict(self) -> dict[str, Any]:
-        return {
-            **self.to_list_dict(),
-            "rules": self.rules,
-        }
-
-
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _default_games() -> dict[str, GameRegistration]:
-    lobby_demo = import_module("games.lobby_demo.server")
-    return {
-        "lobby-demo": GameRegistration(
-            game_id="lobby-demo",
-            name="Lobby Demo",
-            summary="Minimal demo game for validating platform rooms and sessions.",
-            rules="Join the lobby, update the shared message, and verify public snapshots.",
-            min_players=1,
-            max_players=30,
-            module=lobby_demo,
-        )
-    }
-
-
 class RoomManager:
     def __init__(self, games: dict[str, GameRegistration] | None = None) -> None:
-        self._games = games if games is not None else _default_games()
+        self._games = games if games is not None else create_game_registry()
         self._rooms: dict[str, Room] = {}
 
     @property
