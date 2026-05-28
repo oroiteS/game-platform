@@ -2,8 +2,8 @@ from app import create_app
 from app.platform.services.room_manager import RoomManager
 
 
-def test_create_app_registers_health_endpoint():
-    app = create_app()
+def test_create_app_registers_health_endpoint(tmp_path):
+    app = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")})
     client = app.test_client()
 
     response = client.get("/api/health")

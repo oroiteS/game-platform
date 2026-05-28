@@ -1,8 +1,8 @@
 from app import create_app
 
 
-def test_list_games_includes_lobby_demo_summary():
-    client = create_app().test_client()
+def test_list_games_includes_lobby_demo_summary(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.get("/api/games")
 
@@ -15,8 +15,8 @@ def test_list_games_includes_lobby_demo_summary():
     assert lobby_demo["maxPlayers"] == 30
 
 
-def test_get_game_returns_lobby_demo_rules():
-    client = create_app().test_client()
+def test_get_game_returns_lobby_demo_rules(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.get("/api/games/lobby-demo")
 
@@ -26,8 +26,8 @@ def test_get_game_returns_lobby_demo_rules():
     assert game["rules"]
 
 
-def test_create_and_join_room_uses_public_serializers():
-    client = create_app().test_client()
+def test_create_and_join_room_uses_public_serializers(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     create_response = client.post(
         "/api/rooms",
@@ -53,8 +53,8 @@ def test_create_and_join_room_uses_public_serializers():
     assert "sessionTokenHash" not in join_response.get_data(as_text=True)
 
 
-def test_get_room_rejects_invalid_room_code():
-    client = create_app().test_client()
+def test_get_room_rejects_invalid_room_code(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.get("/api/rooms/abc")
 
@@ -62,8 +62,8 @@ def test_get_room_rejects_invalid_room_code():
     assert response.get_json()["error"]["code"] == "invalid_room_code"
 
 
-def test_create_room_rejects_capacity_above_platform_limit():
-    client = create_app().test_client()
+def test_create_room_rejects_capacity_above_platform_limit(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post(
         "/api/rooms",
@@ -74,8 +74,8 @@ def test_create_room_rejects_capacity_above_platform_limit():
     assert response.get_json()["error"]["code"] == "invalid_capacity"
 
 
-def test_create_room_rejects_non_string_game_id():
-    client = create_app().test_client()
+def test_create_room_rejects_non_string_game_id(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post(
         "/api/rooms",
@@ -86,8 +86,8 @@ def test_create_room_rejects_non_string_game_id():
     assert response.get_json()["error"]["code"] == "invalid_game_id"
 
 
-def test_create_room_rejects_missing_body_as_invalid_json():
-    client = create_app().test_client()
+def test_create_room_rejects_missing_body_as_invalid_json(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post("/api/rooms")
 
@@ -95,8 +95,8 @@ def test_create_room_rejects_missing_body_as_invalid_json():
     assert response.get_json()["error"]["code"] == "invalid_json"
 
 
-def test_create_room_rejects_malformed_json():
-    client = create_app().test_client()
+def test_create_room_rejects_malformed_json(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post(
         "/api/rooms",
@@ -108,8 +108,8 @@ def test_create_room_rejects_malformed_json():
     assert response.get_json()["error"]["code"] == "invalid_json"
 
 
-def test_create_room_rejects_json_array_body():
-    client = create_app().test_client()
+def test_create_room_rejects_json_array_body(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post("/api/rooms", json=[])
 
@@ -117,8 +117,8 @@ def test_create_room_rejects_json_array_body():
     assert response.get_json()["error"]["code"] == "invalid_json"
 
 
-def test_create_room_unknown_string_game_id_remains_not_found():
-    client = create_app().test_client()
+def test_create_room_unknown_string_game_id_remains_not_found(tmp_path):
+    client = create_app({"SQLITE_DB_PATH": str(tmp_path / "test.sqlite3")}).test_client()
 
     response = client.post(
         "/api/rooms",
