@@ -151,7 +151,17 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
             if connected_player_id is not None:
                 hub.remove(room_code, connection_id)
                 try:
-                    room_manager.mark_disconnected(room_code, connected_player_id)
+                    disconnected_player = room_manager.mark_disconnected(
+                        room_code,
+                        connected_player_id,
+                        connection_id,
+                    )
+                    if disconnected_player is not None:
+                        snapshot = room_manager.get_snapshot(room_code, connected_player_id)
+                        hub.broadcast(
+                            room_code,
+                            build_room_snapshot_message(snapshot["room"], snapshot["game"]),
+                        )
                 except PlatformError:
                     pass
 

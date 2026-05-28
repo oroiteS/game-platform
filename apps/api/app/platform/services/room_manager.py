@@ -108,9 +108,17 @@ class RoomManager:
         room.updated_at = _utc_now()
         return JoinResult(room=room, player=player, session_token=session_token)
 
-    def mark_disconnected(self, room_code: str, player_id: str) -> Player:
+    def mark_disconnected(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None = None,
+    ) -> Player | None:
         room = self._get_room_by_code(room_code)
         player = self._require_player(room, player_id)
+        if connection_id is not None and player.connection_id != connection_id:
+            return None
+
         disconnected_at = _utc_now()
         player.connected = False
         player.connection_id = None

@@ -75,6 +75,27 @@ def test_reconnect_restores_same_player():
     assert reconnect.session_token == result.session_token
 
 
+def test_mark_disconnected_ignores_stale_connection_id():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    manager.reconnect(
+        result.room.room_code,
+        result.player.player_id,
+        result.session_token,
+        connection_id="conn-new",
+    )
+
+    disconnected = manager.mark_disconnected(
+        result.room.room_code,
+        result.player.player_id,
+        connection_id="conn-old",
+    )
+
+    assert disconnected is None
+    assert result.player.connected is True
+    assert result.player.connection_id == "conn-new"
+
+
 def test_snapshot_reflects_disconnected_and_reconnected_player_state():
     manager = RoomManager()
     result = manager.create_room("lobby-demo", "Ada", 3)

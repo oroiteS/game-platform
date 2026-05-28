@@ -128,3 +128,66 @@ def test_reconnect_failure_does_not_mark_player_disconnected():
 
     assert room_manager.disconnected_players == []
     assert json.loads(websocket.sent[0])["code"] == "invalid_session"
+
+
+class DisconnectBroadcastRoomManager:
+    def __init__(self) -> None:
+        self.marked_disconnected: list[tuple[str, str, str | None]] = []
+        self.connected = True
+
+    def reconnect(
+        self,
+        room_code: str,
+        player_id: str,
+        session_token: str,
+        connection_id: str | None = None,
+    ) -> None:
+        self.connected = True
+
+    def get_snapshot(self, room_code: str, player_id: str) -> dict[str, object]:
+        return {
+            "room": {
+                "roomCode": room_code,
+                "players": [{"playerId": player_id, "connected": self.connected}],
+            },
+            "game": {"players": [{"playerId": player_id, "connected": self.connected}]},
+        }
+
+    def mark_disconnected(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None = None,
+    ) -> object | None:
+        self.marked_disconnected.append((room_code, player_id, connection_id))
+        self.connected = False
+        return object()
+
+
+def test_websocket_disconnect_broadcasts_disconnected_snapshot():
+    app = Flask(__name__)
+    sock = FakeSock()
+    room_manager = DisconnectBroadcastRoomManager()
+    hub = register_websocket_routes(sock, room_manager)
+    handler = sock.routes["/ws/rooms/<room_code>"]
+    websocket = FakeWebSocket()
+    other_websocket = FakeWebSocket()
+    hub.add("123456", "conn-other", other_websocket)
+
+    with app.test_request_context("/ws/rooms/123456?playerId=p1&sessionToken=token"):
+        handler(websocket, "123456")
+
+    assert len(room_manager.marked_disconnected) == 1
+    room_code, player_id, connection_id = room_manager.marked_disconnected[0]
+    assert room_code == "123456"
+    assert player_id == "p1"
+    assert isinstance(connection_id, str)
+    snapshots = [json.loads(payload) for payload in other_websocket.sent]
+    assert snapshots[-1] == {
+        "type": "room_snapshot",
+        "room": {
+            "roomCode": "123456",
+            "players": [{"playerId": "p1", "connected": False}],
+        },
+        "game": {"players": [{"playerId": "p1", "connected": False}]},
+    }
