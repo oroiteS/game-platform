@@ -3,7 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Game Platform</title>
+    <meta name="theme-color" content="#f4f1e8" />
+    <script>
+      (() => {
+        const key = "game-platform.theme:v1";
+        let stored = null;
+        try {
+          stored = window.localStorage.getItem(key);
+        } catch {
+          stored = null;
+        }
+        const preference = stored === "light" || stored === "dark" ? stored : "system";
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme = preference === "system" ? (systemDark ? "dark" : "light") : preference;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "dark" ? "#111820" : "#f4f1e8";
+      })();
+    </script>
+    <title>轻量多人游戏平台</title>
   </head>
   <body>
     <div id="root"></div>

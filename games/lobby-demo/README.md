@@ -6,11 +6,11 @@
 
 ## 玩法和规则
 
-玩家加入同一个大厅，共享一条房间消息。任意已加入玩家都可以提交新消息，后端校验后更新全房间公开快照。该 demo 没有胜负条件，主要用于验证平台最小闭环。
+玩家加入同一个大厅，共享一份房间消息历史。任意已加入玩家都可以提交新消息，后端校验后把 `{name, message}` 追加到全房间公开快照。该 demo 没有胜负条件，主要用于验证平台最小闭环。
 
 人数范围为 1 到 30 人。创建房间时房主仍需输入本局人数，实际加入上限以房间保存的 `capacity` 为准。
 
-`summary` 用于 Games 目录中的简短说明；`rules` 用于规则详情，说明本 demo 的共享消息、连接状态和人数范围。
+`summary` 用于 Games 目录中的简短说明；`rules` 用于规则详情，说明本 demo 的共享消息历史、连接状态和人数范围。
 
 ## 后端 Action
 
@@ -31,11 +31,17 @@
 
 ## 公开快照
 
-`get_state_snapshot` 返回当前 message 和公开玩家列表：
+`get_state_snapshot` 返回消息历史和公开玩家列表：
 
 ```json
 {
-  "message": "hello",
+  "messages": [
+    {
+      "playerId": "p1",
+      "name": "Ada",
+      "message": "hello"
+    }
+  ],
   "players": [
     {
       "playerId": "p1",
@@ -47,6 +53,8 @@
 ```
 
 快照不包含 `sessionToken`。
+
+快照中的 `messages` 按发送顺序保存。每条消息包含公开 `playerId`、发送者显示名 `name` 和消息正文 `message`。
 
 快照中的 `players` 按昵称和 `playerId` 排序，包含公开的 `playerId`、`nickname` 和 `connected` 状态，用于验证加入、断线和重连后的展示。
 

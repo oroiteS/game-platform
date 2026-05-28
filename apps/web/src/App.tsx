@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { GameCatalog } from "./platform/GameCatalog";
 import { HomePage } from "./pages/HomePage";
 import { RoomPage } from "./pages/RoomPage";
@@ -21,7 +22,13 @@ export function App() {
 
   return (
     <>
-      <GameCatalog />
+      <a className="skip-link" href="#main-content">
+        跳到主要内容
+      </a>
+      <div className="site-actions" role="group" aria-label="平台工具">
+        <ThemeToggle />
+        <GameCatalog />
+      </div>
       {roomMatch ? <RoomPage roomCode={roomMatch[1]} /> : <HomePage />}
     </>
   );

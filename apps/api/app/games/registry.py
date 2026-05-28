@@ -40,10 +40,10 @@ def create_game_registry() -> dict[str, GameRegistration]:
             name="Lobby Demo",
             summary=(
                 "Demo lobby for validating room creation, anonymous players, "
-                "shared messages, and reconnect snapshots."
+                "shared message history, and reconnect snapshots."
             ),
             rules=(
-                "Players join a shared lobby and may update one room-wide message. "
+                "Players join a shared lobby and may append short messages to a room-wide history. "
                 "The demo accepts 1 to 30 players, tracks connected status, and is "
                 "intended to exercise platform room/session behavior rather than a "
                 "win condition."
