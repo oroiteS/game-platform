@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from typing import Any
 from urllib.parse import parse_qs
@@ -18,12 +19,21 @@ def build_error_message(code: str, message: str) -> dict[str, str]:
     return {"type": "error", "code": code, "message": message}
 
 
+@dataclass(frozen=True)
+class RoomConnection:
+    websocket: Any
+    player_id: str
+
+
 class ConnectionHub:
     def __init__(self) -> None:
-        self._rooms: dict[str, dict[str, Any]] = {}
+        self._rooms: dict[str, dict[str, RoomConnection]] = {}
 
-    def add(self, room_code: str, connection_id: str, websocket: Any) -> None:
-        self._rooms.setdefault(room_code, {})[connection_id] = websocket
+    def add(self, room_code: str, connection_id: str, websocket: Any, player_id: str) -> None:
+        self._rooms.setdefault(room_code, {})[connection_id] = RoomConnection(
+            websocket=websocket,
+            player_id=player_id,
+        )
 
     def remove(self, room_code: str, connection_id: str) -> None:
         room_connections = self._rooms.get(room_code)
@@ -41,9 +51,32 @@ class ConnectionHub:
 
         payload = json.dumps(message)
         stale_connection_ids: list[str] = []
-        for connection_id, websocket in list(room_connections.items()):
+        for connection_id, connection in list(room_connections.items()):
             try:
-                websocket.send(payload)
+                connection.websocket.send(payload)
+            except Exception:
+                stale_connection_ids.append(connection_id)
+
+        for connection_id in stale_connection_ids:
+            self.remove(room_code, connection_id)
+
+    def broadcast_snapshots(self, room_code: str, room_manager: Any) -> None:
+        room_connections = self._rooms.get(room_code)
+        if not room_connections:
+            return
+
+        stale_connection_ids: list[str] = []
+        for connection_id, connection in list(room_connections.items()):
+            try:
+                snapshot = room_manager.get_snapshot(room_code, connection.player_id)
+            except PlatformError:
+                stale_connection_ids.append(connection_id)
+                continue
+
+            try:
+                connection.websocket.send(
+                    json.dumps(build_room_snapshot_message(snapshot["room"], snapshot["game"]))
+                )
             except Exception:
                 stale_connection_ids.append(connection_id)
 
@@ -100,14 +133,10 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
         try:
             player_id, session_token = _read_connection_credentials(request.query_string)
             room_manager.reconnect(room_code, player_id, session_token, connection_id)
-            hub.add(room_code, connection_id, websocket)
+            hub.add(room_code, connection_id, websocket, player_id)
             connected_player_id = player_id
 
-            snapshot = room_manager.get_snapshot(room_code, player_id)
-            hub.broadcast(
-                room_code,
-                build_room_snapshot_message(snapshot["room"], snapshot["game"]),
-            )
+            hub.broadcast_snapshots(room_code, room_manager)
 
             while True:
                 raw_message = websocket.receive()
@@ -140,11 +169,7 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                     )
                     continue
 
-                snapshot = room_manager.get_snapshot(room_code, player_id)
-                hub.broadcast(
-                    room_code,
-                    build_room_snapshot_message(snapshot["room"], snapshot["game"]),
-                )
+                hub.broadcast_snapshots(room_code, room_manager)
         except PlatformError as error:
             _send_error(websocket, error.code, error.message)
         finally:
@@ -157,11 +182,7 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                         connection_id,
                     )
                     if disconnected_player is not None:
-                        snapshot = room_manager.get_snapshot(room_code, connected_player_id)
-                        hub.broadcast(
-                            room_code,
-                            build_room_snapshot_message(snapshot["room"], snapshot["game"]),
-                        )
+                        hub.broadcast_snapshots(room_code, room_manager)
                 except PlatformError:
                     pass
 

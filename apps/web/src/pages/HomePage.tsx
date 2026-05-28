@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createRoom, getGames, joinRoom, type GameSummary, type JoinResponse } from "../api/client";
+import { createRoom, getGames, type GameSummary, type JoinResponse } from "../api/client";
 import { saveRoomSession } from "../platform/sessionStore";
 
 function saveAndNavigate(response: JoinResponse): void {
@@ -18,7 +18,6 @@ export function HomePage() {
   const [nickname, setNickname] = useState("");
   const [capacity, setCapacity] = useState("2");
   const [joinRoomCode, setJoinRoomCode] = useState("");
-  const [joinNickname, setJoinNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,23 +85,15 @@ export function HomePage() {
     }
   };
 
-  const handleJoin = async () => {
+  const handleJoin = () => {
     const roomCode = joinRoomCode.trim();
-    if (!/^[0-9]{6}$/.test(roomCode) || !joinNickname.trim()) {
-      setError("请输入 6 位房间号和昵称");
+    if (!/^[0-9]{6}$/.test(roomCode)) {
+      setError("请输入 6 位房间号");
       return;
     }
 
-    setLoading(true);
     setError(null);
-    try {
-      const response = await joinRoom(roomCode, joinNickname.trim());
-      saveAndNavigate(response);
-    } catch (nextError) {
-      setError((nextError as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    window.location.hash = `/rooms/${roomCode}`;
   };
 
   return (
@@ -166,7 +157,7 @@ export function HomePage() {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Join</p>
-              <h2>加入房间</h2>
+              <h2>输入房间号进入房间</h2>
             </div>
           </div>
 
@@ -181,18 +172,8 @@ export function HomePage() {
             />
           </label>
 
-          <label>
-            昵称
-            <input
-              value={joinNickname}
-              onChange={(event) => setJoinNickname(event.target.value)}
-              maxLength={24}
-              placeholder="例如 Lin"
-            />
-          </label>
-
           <button type="button" className="primary-button" disabled={loading} onClick={handleJoin}>
-            加入房间
+            进入房间
           </button>
         </div>
       </section>

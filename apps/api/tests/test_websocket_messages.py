@@ -55,9 +55,9 @@ def test_connection_hub_broadcasts_json_to_room_connections_and_removes_failures
     other_room = FakeWebSocket()
     message = {"type": "room_snapshot", "room": {"roomCode": "123456"}, "game": {}}
 
-    hub.add("123456", "conn-live", live)
-    hub.add("123456", "conn-stale", stale)
-    hub.add("654321", "conn-other", other_room)
+    hub.add("123456", "conn-live", live, "p1")
+    hub.add("123456", "conn-stale", stale, "p2")
+    hub.add("654321", "conn-other", other_room, "p3")
 
     hub.broadcast("123456", message)
 
@@ -69,6 +69,38 @@ def test_connection_hub_broadcasts_json_to_room_connections_and_removes_failures
     hub.broadcast("123456", follow_up)
 
     assert live.sent == [json.dumps(message), json.dumps(follow_up)]
+
+
+class ViewerSnapshotRoomManager:
+    def get_snapshot(self, room_code: str, player_id: str) -> dict[str, object]:
+        return {
+            "room": {"roomCode": room_code},
+            "game": {"viewer": player_id, "privateHand": [f"{player_id}-card"]},
+        }
+
+
+def test_connection_hub_broadcast_snapshots_uses_each_connection_player_id():
+    hub = ConnectionHub()
+    player_one = FakeWebSocket()
+    player_two = FakeWebSocket()
+    other_room = FakeWebSocket()
+    room_manager = ViewerSnapshotRoomManager()
+
+    hub.add("123456", "conn-p1", player_one, "p1")
+    hub.add("123456", "conn-p2", player_two, "p2")
+    hub.add("654321", "conn-other", other_room, "p3")
+
+    hub.broadcast_snapshots("123456", room_manager)
+
+    assert json.loads(player_one.sent[0])["game"] == {
+        "viewer": "p1",
+        "privateHand": ["p1-card"],
+    }
+    assert json.loads(player_two.sent[0])["game"] == {
+        "viewer": "p2",
+        "privateHand": ["p2-card"],
+    }
+    assert other_room.sent == []
 
 
 def test_decode_client_message_distinguishes_invalid_json_from_invalid_message():
@@ -148,9 +180,9 @@ class DisconnectBroadcastRoomManager:
         return {
             "room": {
                 "roomCode": room_code,
-                "players": [{"playerId": player_id, "connected": self.connected}],
+                "players": [{"playerId": "p1", "connected": self.connected}],
             },
-            "game": {"players": [{"playerId": player_id, "connected": self.connected}]},
+            "game": {"viewer": player_id},
         }
 
     def mark_disconnected(
@@ -172,7 +204,7 @@ def test_websocket_disconnect_broadcasts_disconnected_snapshot():
     handler = sock.routes["/ws/rooms/<room_code>"]
     websocket = FakeWebSocket()
     other_websocket = FakeWebSocket()
-    hub.add("123456", "conn-other", other_websocket)
+    hub.add("123456", "conn-other", other_websocket, "p2")
 
     with app.test_request_context("/ws/rooms/123456?playerId=p1&sessionToken=token"):
         handler(websocket, "123456")
@@ -189,5 +221,5 @@ def test_websocket_disconnect_broadcasts_disconnected_snapshot():
             "roomCode": "123456",
             "players": [{"playerId": "p1", "connected": False}],
         },
-        "game": {"players": [{"playerId": "p1", "connected": False}]},
+        "game": {"viewer": "p2"},
     }
