@@ -1,0 +1,73 @@
+# Game Contract
+
+本目录记录平台和游戏模块之间的契约。
+
+当前文件是契约草案，后续实现时应将这些概念落成 TypeScript 类型和 Python 类型。
+
+## 游戏元信息
+
+每个游戏需要提供前端元信息：
+
+```ts
+export const gameConfig = {
+  id: "example-game",
+  name: "示例游戏",
+  minPlayers: 1,
+  maxPlayers: 4,
+  load: () => import("./web/GameApp"),
+};
+```
+
+`id` 应只使用小写字母、数字和连字符。
+
+## 后端钩子
+
+每个游戏后端需要实现以下概念：
+
+```text
+createInitialState(roomContext) -> gameState
+onPlayerJoin(gameState, player) -> GameResult
+onPlayerDisconnect(gameState, player) -> GameResult
+onPlayerReconnect(gameState, player) -> GameResult
+onPlayerLeave(gameState, player) -> GameResult
+handleAction(gameState, player, action) -> GameResult
+getStateSnapshot(gameState, viewer) -> dict
+```
+
+## GameResult
+
+游戏后端处理结果建议包含：
+
+```text
+status: accepted | rejected | noop
+state: unknown
+errorCode: string | null
+publicEvents: list
+privateEvents: list
+```
+
+平台负责把结果广播给客户端，游戏模块不直接操作连接。
+
+## Action
+
+客户端发给后端的操作建议统一为：
+
+```json
+{
+  "type": "action_name",
+  "payload": {}
+}
+```
+
+具体 `type` 和 `payload` 由每个游戏在自己的 `shared/` 和 `README.md` 中说明。
+
+## Snapshot
+
+重连后平台会调用游戏的 `getStateSnapshot`，把当前完整状态发送给客户端。
+
+快照应满足：
+
+- 足够恢复 UI。
+- 不泄露不该给当前玩家看到的信息。
+- 可以被 JSON 序列化。
+

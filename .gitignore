@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+
+# Build outputs
+dist/
+build/
+coverage/
+htmlcov/
+*.tsbuildinfo
+
+# Local env and runtime files
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Tool caches
+.DS_Store
+.idea/
+.vscode/
+
+# Agent and planning artifacts
+docs/superpowers/
+.codex/
+.claude/
+
+# Local git worktrees
+.worktrees/
