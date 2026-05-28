@@ -20,6 +20,9 @@ class RoomStorage(Protocol):
     def list_room_codes(self) -> set[str]:
         ...
 
+    def list_rooms(self) -> list[Room]:
+        ...
+
     def get_room(self, room_code: str) -> Room | None:
         ...
 
@@ -38,6 +41,9 @@ class InMemoryRoomStorage:
 
     def list_room_codes(self) -> set[str]:
         return set(self._rooms)
+
+    def list_rooms(self) -> list[Room]:
+        return [self._rooms[room_code] for room_code in sorted(self._rooms)]
 
     def get_room(self, room_code: str) -> Room | None:
         return self._rooms.get(room_code)
@@ -78,6 +84,15 @@ class SQLiteRoomStorage:
         with self._connect() as connection:
             rows = connection.execute("select room_code from rooms").fetchall()
         return {row["room_code"] for row in rows}
+
+    def list_rooms(self) -> list[Room]:
+        with self._connect() as connection:
+            rows = connection.execute("select room_code from rooms order by room_code").fetchall()
+        return [
+            room
+            for row in rows
+            if (room := self.get_room(row["room_code"])) is not None
+        ]
 
     def get_room(self, room_code: str) -> Room | None:
         with self._connect() as connection:

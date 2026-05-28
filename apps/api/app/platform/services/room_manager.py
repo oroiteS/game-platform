@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import random
 import string
 from typing import Any
@@ -19,6 +19,8 @@ from app.platform.services.room_storage import InMemoryRoomStorage, RoomStorage
 ROOM_CODE_LENGTH = 6
 MAX_NICKNAME_LENGTH = 24
 PLATFORM_ROOM_CAPACITY = 30
+DEFAULT_ROOM_TTL_SECONDS = 60 * 60 * 12
+DEFAULT_EMPTY_ROOM_TTL_SECONDS = 60 * 30
 
 
 def _utc_now() -> datetime:
@@ -93,6 +95,27 @@ class RoomManager:
 
     def get_room(self, room_code: str) -> Room:
         return self._get_room_by_code(room_code)
+
+    def cleanup_expired_rooms(
+        self,
+        now: datetime | None = None,
+        room_ttl_seconds: int = DEFAULT_ROOM_TTL_SECONDS,
+        empty_room_ttl_seconds: int = DEFAULT_EMPTY_ROOM_TTL_SECONDS,
+    ) -> list[str]:
+        cleanup_time = now if now is not None else _utc_now()
+        removed_room_codes: list[str] = []
+
+        for room in self._storage.list_rooms():
+            if self._is_room_expired(
+                room,
+                cleanup_time,
+                room_ttl_seconds=room_ttl_seconds,
+                empty_room_ttl_seconds=empty_room_ttl_seconds,
+            ):
+                self._storage.delete_room(room.room_code)
+                removed_room_codes.append(room.room_code)
+
+        return removed_room_codes
 
     def reconnect(
         self,
@@ -208,6 +231,32 @@ class RoomManager:
         if room is None:
             raise PlatformError("room_not_found", "Room was not found.", 404)
         return room
+
+    def _is_room_expired(
+        self,
+        room: Room,
+        now: datetime,
+        room_ttl_seconds: int,
+        empty_room_ttl_seconds: int,
+    ) -> bool:
+        if room.expires_at is not None and room.expires_at <= now:
+            return True
+
+        if now - room.updated_at >= timedelta(seconds=room_ttl_seconds):
+            return True
+
+        if room.players and all(not player.connected for player in room.players):
+            last_disconnected_at = max(
+                (player.disconnected_at for player in room.players if player.disconnected_at is not None),
+                default=None,
+            )
+            if (
+                last_disconnected_at is not None
+                and now - last_disconnected_at >= timedelta(seconds=empty_room_ttl_seconds)
+            ):
+                return True
+
+        return False
 
     def _generate_room_code(self) -> str:
         existing_room_codes = self._storage.list_room_codes()
