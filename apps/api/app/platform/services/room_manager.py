@@ -247,13 +247,10 @@ class RoomManager:
 
         if room.players and all(not player.connected for player in room.players):
             last_disconnected_at = max(
-                (player.disconnected_at for player in room.players if player.disconnected_at is not None),
-                default=None,
+                player.disconnected_at or player.last_seen_at
+                for player in room.players
             )
-            if (
-                last_disconnected_at is not None
-                and now - last_disconnected_at >= timedelta(seconds=empty_room_ttl_seconds)
-            ):
+            if now - last_disconnected_at >= timedelta(seconds=empty_room_ttl_seconds):
                 return True
 
         return False

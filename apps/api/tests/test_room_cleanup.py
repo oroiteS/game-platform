@@ -75,3 +75,25 @@ def test_cleanup_keeps_recently_empty_room(tmp_path):
 
     room = manager.get_room(created.room.room_code)
     assert room.players[0].connected is False
+
+
+def test_cleanup_uses_last_seen_when_disconnected_at_is_missing(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage, manager = sqlite_manager(db_path)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    player = created.room.players[0]
+    player.connected = False
+    player.disconnected_at = None
+    player.last_seen_at = now - timedelta(seconds=61)
+    created.room.updated_at = now - timedelta(seconds=61)
+    storage.save_room(created.room)
+
+    removed = manager.cleanup_expired_rooms(
+        now=now,
+        room_ttl_seconds=300,
+        empty_room_ttl_seconds=60,
+    )
+
+    assert removed == [created.room.room_code]
+    assert storage.get_room(created.room.room_code) is None
