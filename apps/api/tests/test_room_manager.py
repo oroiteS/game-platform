@@ -46,6 +46,17 @@ def test_create_room_rejects_capacity_above_platform_limit():
     assert error.value.status_code == 400
 
 
+@pytest.mark.parametrize("requested_capacity", [True, False, "3"])
+def test_create_room_rejects_non_integer_capacity_types(requested_capacity):
+    manager = RoomManager()
+
+    with pytest.raises(PlatformError) as error:
+        manager.create_room("lobby-demo", "Ada", requested_capacity)
+
+    assert error.value.code == "invalid_capacity"
+    assert error.value.status_code == 400
+
+
 def test_reconnect_restores_same_player():
     manager = RoomManager()
     result = manager.create_room("lobby-demo", "Ada", 3)
@@ -64,6 +75,28 @@ def test_reconnect_restores_same_player():
     assert reconnect.session_token == result.session_token
 
 
+def test_snapshot_reflects_disconnected_and_reconnected_player_state():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+
+    manager.mark_disconnected(result.room.room_code, result.player.player_id)
+    disconnected_snapshot = manager.get_snapshot(result.room.room_code, result.player.player_id)
+
+    assert disconnected_snapshot["room"]["players"][0]["connected"] is False
+    assert disconnected_snapshot["game"]["players"][0]["connected"] is False
+
+    manager.reconnect(
+        result.room.room_code,
+        result.player.player_id,
+        result.session_token,
+        connection_id="conn-2",
+    )
+    reconnected_snapshot = manager.get_snapshot(result.room.room_code, result.player.player_id)
+
+    assert reconnected_snapshot["room"]["players"][0]["connected"] is True
+    assert reconnected_snapshot["game"]["players"][0]["connected"] is True
+
+
 def test_reconnect_rejects_invalid_token():
     manager = RoomManager()
     result = manager.create_room("lobby-demo", "Ada", 3)
@@ -73,6 +106,17 @@ def test_reconnect_rejects_invalid_token():
 
     assert error.value.code == "invalid_session"
     assert error.value.status_code == 401
+
+
+def test_get_snapshot_rejects_unknown_player():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+
+    with pytest.raises(PlatformError) as error:
+        manager.get_snapshot(result.room.room_code, "missing-player")
+
+    assert error.value.code == "player_not_found"
+    assert error.value.status_code == 404
 
 
 def test_get_game_info_includes_rules():

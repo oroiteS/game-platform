@@ -222,7 +222,7 @@ class RoomManager:
         return normalized
 
     def _validate_capacity(self, requested_capacity: int, game: GameRegistration) -> int:
-        if not isinstance(requested_capacity, int):
+        if type(requested_capacity) is not int:
             raise PlatformError("invalid_capacity", "Capacity must be an integer.", 400)
 
         max_capacity = min(PLATFORM_ROOM_CAPACITY, game.max_players)
