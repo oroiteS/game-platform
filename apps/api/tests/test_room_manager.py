@@ -4,6 +4,17 @@ from app.platform.errors import PlatformError
 from app.platform.services.room_manager import RoomManager
 
 
+def test_room_manager_accepts_explicit_storage():
+    from app.platform.services.room_storage import InMemoryRoomStorage
+
+    storage = InMemoryRoomStorage()
+    manager = RoomManager(storage=storage)
+
+    result = manager.create_room("lobby-demo", "Ada", 3)
+
+    assert storage.get_room(result.room.room_code) is result.room
+
+
 def test_create_room_generates_code_saves_capacity_and_returns_join_result():
     manager = RoomManager()
 

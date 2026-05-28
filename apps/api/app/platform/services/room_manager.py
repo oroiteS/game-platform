@@ -14,6 +14,7 @@ from app.platform.services.session_tokens import (
     hash_token,
     verify_token,
 )
+from app.platform.services.room_storage import InMemoryRoomStorage, RoomStorage
 
 ROOM_CODE_LENGTH = 6
 MAX_NICKNAME_LENGTH = 24
@@ -25,9 +26,13 @@ def _utc_now() -> datetime:
 
 
 class RoomManager:
-    def __init__(self, games: dict[str, GameRegistration] | None = None) -> None:
+    def __init__(
+        self,
+        games: dict[str, GameRegistration] | None = None,
+        storage: RoomStorage | None = None,
+    ) -> None:
         self._games = games if games is not None else create_game_registry()
-        self._rooms: dict[str, Room] = {}
+        self._storage = storage if storage is not None else InMemoryRoomStorage()
 
     @property
     def platform_room_capacity(self) -> int:
@@ -60,7 +65,7 @@ class RoomManager:
             capacity=capacity,
             game_state=game_state,
         )
-        self._rooms[room_code] = room
+        self._storage.save_room(room)
         return self.join_room(room_code, nickname)
 
     def join_room(self, room_code: str, nickname: str) -> JoinResult:
@@ -81,6 +86,7 @@ class RoomManager:
         result = game.module.on_player_join(room.game_state, player.to_game_dict())
         room.game_state = result.get("state", room.game_state)
         room.updated_at = _utc_now()
+        self._storage.save_room(room)
         return JoinResult(room=room, player=player, session_token=session_token)
 
     def get_room(self, room_code: str) -> Room:
@@ -106,6 +112,7 @@ class RoomManager:
         result = game.module.on_player_reconnect(room.game_state, player.to_game_dict())
         room.game_state = result.get("state", room.game_state)
         room.updated_at = _utc_now()
+        self._storage.save_room(room)
         return JoinResult(room=room, player=player, session_token=session_token)
 
     def mark_disconnected(
@@ -128,6 +135,7 @@ class RoomManager:
         result = game.module.on_player_disconnect(room.game_state, player.to_game_dict())
         room.game_state = result.get("state", room.game_state)
         room.updated_at = disconnected_at
+        self._storage.save_room(room)
         return player
 
     def handle_action(self, room_code: str, player_id: str, action: dict[str, Any]) -> dict[str, Any]:
@@ -141,6 +149,7 @@ class RoomManager:
         result = game.module.handle_action(room.game_state, player.to_game_dict(), action)
         room.game_state = result.get("state", room.game_state)
         room.updated_at = _utc_now()
+        self._storage.save_room(room)
         return result
 
     def get_snapshot(self, room_code: str, player_id: str) -> dict[str, Any]:
@@ -168,15 +177,16 @@ class RoomManager:
         if not self._is_valid_room_code(room_code):
             raise PlatformError("invalid_room_code", "Room code must be 6 digits.", 400)
 
-        room = self._rooms.get(room_code)
+        room = self._storage.get_room(room_code)
         if room is None:
             raise PlatformError("room_not_found", "Room was not found.", 404)
         return room
 
     def _generate_room_code(self) -> str:
+        existing_room_codes = self._storage.list_room_codes()
         for _ in range(1000):
             room_code = "".join(random.choices(string.digits, k=ROOM_CODE_LENGTH))
-            if room_code not in self._rooms:
+            if room_code not in existing_room_codes:
                 return room_code
         raise PlatformError("room_code_unavailable", "Could not allocate room code.", 503)
 
