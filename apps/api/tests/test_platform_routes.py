@@ -127,3 +127,19 @@ def test_create_room_unknown_string_game_id_remains_not_found():
 
     assert response.status_code == 404
     assert response.get_json()["error"]["code"] == "game_not_found"
+
+
+def test_room_created_with_sqlite_backing_survives_app_restart(tmp_path):
+    db_path = tmp_path / "routes.sqlite3"
+    first_client = create_app({"SQLITE_DB_PATH": str(db_path)}).test_client()
+    create_response = first_client.post(
+        "/api/rooms",
+        json={"gameId": "lobby-demo", "nickname": "Ada", "capacity": 3},
+    )
+    room_code = create_response.get_json()["room"]["roomCode"]
+
+    restarted_client = create_app({"SQLITE_DB_PATH": str(db_path)}).test_client()
+    response = restarted_client.get(f"/api/rooms/{room_code}")
+
+    assert response.status_code == 200
+    assert response.get_json()["room"]["roomCode"] == room_code
