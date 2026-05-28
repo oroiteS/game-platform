@@ -71,15 +71,17 @@ def _read_connection_credentials(query_string: bytes | str) -> tuple[str, str]:
     return player_id, session_token
 
 
-def _decode_client_message(raw_message: Any) -> dict[str, Any] | None:
+def decode_client_message(raw_message: Any) -> tuple[dict[str, Any] | None, str | None]:
     try:
         message = json.loads(raw_message)
     except (TypeError, json.JSONDecodeError):
-        return None
+        return None, "invalid_json"
 
     if not isinstance(message, dict):
-        return None
-    return message
+        return None, "invalid_message"
+    if not _is_game_action_message(message):
+        return None, "invalid_message"
+    return message["action"], None
 
 
 def _is_game_action_message(message: dict[str, Any]) -> bool:
@@ -93,13 +95,13 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
     def room_socket(websocket: Any, room_code: str) -> None:
         connection_id = uuid4().hex
         player_id: str | None = None
-        connected = False
+        connected_player_id: str | None = None
 
         try:
             player_id, session_token = _read_connection_credentials(request.query_string)
             room_manager.reconnect(room_code, player_id, session_token, connection_id)
             hub.add(room_code, connection_id, websocket)
-            connected = True
+            connected_player_id = player_id
 
             snapshot = room_manager.get_snapshot(room_code, player_id)
             hub.broadcast(
@@ -112,12 +114,11 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                 if raw_message is None:
                     break
 
-                message = _decode_client_message(raw_message)
-                if message is None:
+                action, error_code = decode_client_message(raw_message)
+                if error_code == "invalid_json":
                     _send_error(websocket, "invalid_json", "Message must be valid JSON.")
                     continue
-
-                if not _is_game_action_message(message):
+                if error_code == "invalid_message":
                     _send_error(
                         websocket,
                         "invalid_message",
@@ -126,7 +127,7 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                     continue
 
                 try:
-                    result = room_manager.handle_action(room_code, player_id, message["action"])
+                    result = room_manager.handle_action(room_code, player_id, action)
                 except PlatformError as error:
                     _send_error(websocket, error.code, error.message)
                     continue
@@ -147,11 +148,10 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
         except PlatformError as error:
             _send_error(websocket, error.code, error.message)
         finally:
-            if connected:
+            if connected_player_id is not None:
                 hub.remove(room_code, connection_id)
-            if player_id is not None:
                 try:
-                    room_manager.mark_disconnected(room_code, player_id)
+                    room_manager.mark_disconnected(room_code, connected_player_id)
                 except PlatformError:
                     pass
 
