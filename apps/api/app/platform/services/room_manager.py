@@ -147,7 +147,10 @@ class RoomManager:
             "game": game.module.get_state_snapshot(room.game_state, player.to_game_dict()),
         }
 
-    def _get_game(self, game_id: str) -> GameRegistration:
+    def _get_game(self, game_id: Any) -> GameRegistration:
+        if not isinstance(game_id, str) or not game_id.strip():
+            raise PlatformError("invalid_game_id", "Game id is required.", 400)
+
         game = self._games.get(game_id)
         if game is None:
             raise PlatformError("game_not_found", "Game was not found.", 404)

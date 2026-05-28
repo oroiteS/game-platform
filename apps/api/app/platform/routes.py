@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from flask import Blueprint, current_app, request
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from app.platform.errors import PlatformError, error_response
 from app.platform.models import JoinResult
@@ -16,8 +17,17 @@ def _manager() -> RoomManager:
 
 
 def _json_body() -> dict[str, Any]:
-    body = request.get_json(silent=True)
-    return body if isinstance(body, dict) else {}
+    if not request.get_data(cache=True):
+        raise PlatformError("invalid_json", "Request body must be a JSON object.", 400)
+
+    try:
+        body = request.get_json()
+    except (BadRequest, UnsupportedMediaType) as error:
+        raise PlatformError("invalid_json", "Request body must be a JSON object.", 400) from error
+
+    if not isinstance(body, dict):
+        raise PlatformError("invalid_json", "Request body must be a JSON object.", 400)
+    return body
 
 
 def _join_result_dict(result: JoinResult) -> dict[str, Any]:

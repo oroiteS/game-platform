@@ -72,3 +72,58 @@ def test_create_room_rejects_capacity_above_platform_limit():
 
     assert response.status_code == 400
     assert response.get_json()["error"]["code"] == "invalid_capacity"
+
+
+def test_create_room_rejects_non_string_game_id():
+    client = create_app().test_client()
+
+    response = client.post(
+        "/api/rooms",
+        json={"gameId": [], "nickname": "Ada", "capacity": 4},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "invalid_game_id"
+
+
+def test_create_room_rejects_missing_body_as_invalid_json():
+    client = create_app().test_client()
+
+    response = client.post("/api/rooms")
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "invalid_json"
+
+
+def test_create_room_rejects_malformed_json():
+    client = create_app().test_client()
+
+    response = client.post(
+        "/api/rooms",
+        data='{"gameId": "lobby-demo"',
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "invalid_json"
+
+
+def test_create_room_rejects_json_array_body():
+    client = create_app().test_client()
+
+    response = client.post("/api/rooms", json=[])
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "invalid_json"
+
+
+def test_create_room_unknown_string_game_id_remains_not_found():
+    client = create_app().test_client()
+
+    response = client.post(
+        "/api/rooms",
+        json={"gameId": "missing-game", "nickname": "Ada", "capacity": 4},
+    )
+
+    assert response.status_code == 404
+    assert response.get_json()["error"]["code"] == "game_not_found"
