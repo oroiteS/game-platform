@@ -12,6 +12,8 @@
 export const gameConfig = {
   id: "example-game",
   name: "示例游戏",
+  summary: "一句话说明游戏目标和体验。",
+  rules: "面向玩家展示的规则说明。",
   minPlayers: 1,
   maxPlayers: 4,
   load: () => import("./web/GameApp"),
@@ -19,6 +21,24 @@ export const gameConfig = {
 ```
 
 `id` 应只使用小写字母、数字和连字符。
+
+`summary` 显示在 Games 目录和游戏列表中，应短而明确。`rules` 显示在游戏规则详情中，应说明玩法、胜负条件、行动限制和特殊人数规则。
+
+## 人数和容量
+
+平台有独立硬上限 30 人。游戏通过 `minPlayers` 和 `maxPlayers` 声明规则允许的人数范围。
+
+创建房间时，客户端提交本局请求人数：
+
+```json
+{
+  "gameId": "example-game",
+  "nickname": "Ada",
+  "capacity": 4
+}
+```
+
+平台校验 `capacity` 是整数，且位于 `minPlayers` 到 `min(30, maxPlayers)` 之间。校验通过后，房间保存 `capacity`，后续加入人数上限以该房间值为准。
 
 ## 后端钩子
 
@@ -48,6 +68,12 @@ privateEvents: list
 
 平台负责把结果广播给客户端，游戏模块不直接操作连接。
 
+`status` 语义：
+
+- `accepted`：操作有效，状态已更新或可继续广播。
+- `rejected`：操作无效，平台向发起方发送错误。
+- `noop`：操作有效但状态不变。
+
 ## Action
 
 客户端发给后端的操作建议统一为：
@@ -61,6 +87,18 @@ privateEvents: list
 
 具体 `type` 和 `payload` 由每个游戏在自己的 `shared/` 和 `README.md` 中说明。
 
+当前 WebSocket 客户端消息 envelope 已落地为：
+
+```json
+{
+  "type": "game_action",
+  "action": {
+    "type": "action_name",
+    "payload": {}
+  }
+}
+```
+
 ## Snapshot
 
 重连后平台会调用游戏的 `getStateSnapshot`，把当前完整状态发送给客户端。
@@ -71,3 +109,28 @@ privateEvents: list
 - 不泄露不该给当前玩家看到的信息。
 - 可以被 JSON 序列化。
 
+当前服务端消息 envelope 已落地为：
+
+```json
+{
+  "type": "room_snapshot",
+  "room": {
+    "roomCode": "123456",
+    "gameId": "example-game",
+    "status": "waiting",
+    "capacity": 4,
+    "players": []
+  },
+  "game": {}
+}
+```
+
+错误消息 envelope：
+
+```json
+{
+  "type": "error",
+  "code": "invalid_message",
+  "message": "Message must be valid JSON."
+}
+```

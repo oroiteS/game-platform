@@ -10,7 +10,7 @@
 - 新增游戏优先在 `games/<game-id>/` 内完成。
 - 平台代码只提供通用能力，不写具体游戏规则。
 - 默认不做登录，使用匿名玩家身份和 `sessionToken` 支持快速恢复。
-- 早期部署只需要一个前端静态站点、一个 Python 后端进程、一个 SQLite 文件。
+- 早期部署只需要一个前端静态站点和一个 Python 后端进程。
 
 ## 目录
 
@@ -36,8 +36,33 @@ docs/
 - 前端：pnpm + React + Vite + TypeScript
 - 后端：Python + Flask，实时连接优先使用 Flask-Sock
 - Python 包管理：uv
-- 早期存储：内存房间状态 + SQLite 会话恢复信息
+- 第一阶段存储：内存房间状态 + 内存匿名 session 恢复信息
 - 实时连接：WebSocket
+
+## 本地启动
+
+后端：
+
+```bash
+cd apps/api && uv run python main.py
+```
+
+前端：
+
+```bash
+cd apps/web && pnpm dev
+```
+
+验证命令：
+
+```bash
+cd apps/api && uv run pytest -v
+cd apps/web && pnpm build
+```
+
+首页提供创建房间和加入房间两个主要流程。创建房间时，房主选择游戏并输入本局人数；平台会校验人数不超过平台硬上限和游戏人数上限。加入房间时只需要输入 6 位房间号和昵称，加入上限以房间创建时保存的本局人数为准。
+
+右上角或页面角落的 Games 入口会显示游戏目录，可以查看每个游戏的简介、人数范围和规则详情。
 
 ## 新增游戏入口
 

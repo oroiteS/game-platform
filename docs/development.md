@@ -38,6 +38,46 @@
 
 除非项目规范被明确修改，不引入 Next.js、Nuxt、Remix 或其他 SSR 前端框架。
 
+### 前端开发命令
+
+首次进入前端目录后安装依赖：
+
+```bash
+cd apps/web && pnpm install
+```
+
+启动开发服务器：
+
+```bash
+cd apps/web && pnpm dev
+```
+
+构建验证：
+
+```bash
+cd apps/web && pnpm build
+```
+
+如果 pnpm 忽略了 esbuild 的 build scripts，Vite 构建可能失败。处理方式任选其一：
+
+```bash
+cd apps/web && pnpm approve-builds --all
+cd apps/web && pnpm rebuild esbuild
+```
+
+或在 `apps/web/pnpm-workspace.yaml` 中设置：
+
+```yaml
+allowBuilds:
+  esbuild: true
+```
+
+然后执行：
+
+```bash
+cd apps/web && pnpm rebuild esbuild
+```
+
 ## 后端约定
 
 后端主应用位于 `apps/api/`。
@@ -67,6 +107,20 @@ apps/api/
 ```
 
 实时连接优先使用 Flask-Sock。除非项目规范被明确修改，不引入 FastAPI、Django 或其他 Python Web 框架。
+
+### 后端开发命令
+
+启动后端：
+
+```bash
+cd apps/api && uv run python main.py
+```
+
+运行测试：
+
+```bash
+cd apps/api && uv run pytest -v
+```
 
 ## 文档优先级
 

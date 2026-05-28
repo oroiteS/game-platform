@@ -22,4 +22,16 @@
 
 早期推荐单进程运行，因为房间状态默认保存在内存中。
 
+启动：
+
+```bash
+cd apps/api && uv run python main.py
+```
+
+测试：
+
+```bash
+cd apps/api && uv run pytest -v
+```
+
 除非项目规范被明确修改，不使用 FastAPI、Django 或其他 Python Web 框架。

@@ -19,5 +19,22 @@
 - 匿名 session 保存和恢复。
 - 加载 `games/<game-id>/web/` 中的游戏入口。
 
-本目录暂不包含实际初始化代码。
+安装依赖：
+
+```bash
+cd apps/web && pnpm install
+```
+
+启动：
+
+```bash
+cd apps/web && pnpm dev
+```
+
+构建：
+
+```bash
+cd apps/web && pnpm build
+```
+
 本项目不使用 npm，不使用 Next.js 或其他 SSR 前端框架。
