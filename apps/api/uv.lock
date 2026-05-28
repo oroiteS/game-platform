@@ -69,6 +69,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "flask" },
     { name = "flask-sock" },
+    { name = "game-platform-games" },
 ]
 
 [package.dev-dependencies]
@@ -80,10 +81,16 @@ dev = [
 requires-dist = [
     { name = "flask", specifier = ">=3.0.0" },
     { name = "flask-sock", specifier = ">=0.7.0" },
+    { name = "game-platform-games", editable = "../../" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0.0" }]
+
+[[package]]
+name = "game-platform-games"
+version = "0.1.0"
+source = { editable = "../../" }
 
 [[package]]
 name = "h11"

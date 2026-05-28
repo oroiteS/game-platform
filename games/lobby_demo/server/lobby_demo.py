@@ -63,7 +63,7 @@ def handle_action(state, player, action):
 def get_state_snapshot(state, viewer):
     players = sorted(
         state["players"].values(),
-        key=lambda player: player.get("nickname", "").lower(),
+        key=lambda player: (player.get("nickname", "").lower(), player["playerId"]),
     )
     return {
         "message": state["message"],

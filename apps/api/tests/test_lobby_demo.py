@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
 from games.lobby_demo.server.lobby_demo import (
     create_initial_state,
     get_state_snapshot,
@@ -45,3 +40,13 @@ def test_lobby_demo_snapshot_is_public():
         "message": "hello",
         "players": [{"playerId": "p1", "nickname": "Ada", "connected": True}],
     }
+
+
+def test_lobby_demo_snapshot_sorts_duplicate_nicknames_by_player_id():
+    state = create_initial_state({"roomCode": "123456"})
+    on_player_join(state, player("p2", "Ada"))
+    on_player_join(state, player("p1", "ada"))
+
+    snapshot = get_state_snapshot(state, player())
+
+    assert [player["playerId"] for player in snapshot["players"]] == ["p1", "p2"]

@@ -5,7 +5,11 @@ requires-python = ">=3.11"
 dependencies = [
   "flask>=3.0.0",
   "flask-sock>=0.7.0",
+  "game-platform-games",
 ]
+
+[tool.uv.sources]
+game-platform-games = { path = "../..", editable = true }
 
 [dependency-groups]
 dev = [
