@@ -116,9 +116,11 @@ apps/api/
 - `SQLITE_DB_PATH`：SQLite 文件路径，默认指向 `apps/api/var/game-platform.sqlite3`。
 - `ROOM_TTL_SECONDS`：房间最大保留时间。
 - `EMPTY_ROOM_TTL_SECONDS`：所有玩家断线后的空房间保留时间。
-- `DISCONNECTED_PLAYER_TTL_SECONDS`：玩家断线后的恢复窗口。
-- `ROOM_CLEANUP_ENABLED`：是否启用房间清理。
-- `ROOM_CLEANUP_INTERVAL_SECONDS`：清理任务间隔。
+- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留配置，当前未接入玩家级断线清理逻辑；当前重连取决于房间仍存在且 `sessionToken` 校验通过。
+- `ROOM_CLEANUP_ENABLED`：预留配置，当前没有后台调度器读取该配置自动执行清理。
+- `ROOM_CLEANUP_INTERVAL_SECONDS`：预留配置，当前没有后台调度器读取该配置作为清理间隔。
+
+当前可确定使用的清理入口是 `RoomManager.cleanup_expired_rooms(...)`。测试或维护脚本可以显式调用该方法验证 `ROOM_TTL_SECONDS` 和 `EMPTY_ROOM_TTL_SECONDS` 对房间删除的影响。
 
 ### 后端开发命令
 
@@ -162,5 +164,5 @@ cd apps/api && uv run pytest -v
 - 创建房间。
 - 加入房间。
 - sessionToken 恢复。
-- 断线超时清理。
+- 房间 TTL 和空房间 TTL 清理。
 - SQLite 持久化和重启恢复。

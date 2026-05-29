@@ -17,7 +17,7 @@
 - RoomManager。
 - 匿名玩家 session。
 - 断线重连。
-- 房间过期清理。
+- 房间过期清理入口。
 - 游戏后端模块注册。
 
 早期推荐单进程运行。房间、玩家、session token hash 和游戏状态会保存到 SQLite；当前 WebSocket 连接仍保存在进程内。
@@ -27,9 +27,11 @@
 - `SQLITE_DB_PATH`
 - `ROOM_TTL_SECONDS`
 - `EMPTY_ROOM_TTL_SECONDS`
-- `DISCONNECTED_PLAYER_TTL_SECONDS`
-- `ROOM_CLEANUP_ENABLED`
-- `ROOM_CLEANUP_INTERVAL_SECONDS`
+- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留，当前未接入玩家级断线清理逻辑。
+- `ROOM_CLEANUP_ENABLED`：预留，当前没有后台调度器自动执行清理。
+- `ROOM_CLEANUP_INTERVAL_SECONDS`：预留，当前没有后台调度器读取该间隔。
+
+当前房间清理入口是 `RoomManager.cleanup_expired_rooms(...)`，需要由测试、维护脚本或后续调度器显式调用。
 
 启动：
 

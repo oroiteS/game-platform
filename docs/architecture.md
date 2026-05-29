@@ -25,7 +25,7 @@
 - WebSocket 连接管理。
 - 匿名玩家身份。
 - `sessionToken` 恢复。
-- 玩家断线、重连、超时清理。
+- 玩家断线、重连、房间 TTL 清理。
 - 通用错误处理。
 - 调用具体游戏模块的后端钩子。
 
@@ -76,7 +76,7 @@ SQLite 解决轻量持久化，不解决跨进程 WebSocket 广播或多 worker 
 
 `sessionToken` 只用于匿名玩家在同一房间内恢复身份，不等同于登录账号，也不提供跨设备持久身份。平台只保存 `sessionTokenHash`，不保存明文 `sessionToken`。
 
-房间清理由平台层执行。超过 `ROOM_TTL_SECONDS` 的房间会被删除；所有玩家断线且超过 `EMPTY_ROOM_TTL_SECONDS` 的房间也会被删除。TTL 删除不会调用游戏模块钩子。
+房间清理由平台层的 `RoomManager.cleanup_expired_rooms(...)` 执行。调用该方法时，超过 `ROOM_TTL_SECONDS` 的房间会被删除；所有玩家断线且超过 `EMPTY_ROOM_TTL_SECONDS` 的房间也会被删除。TTL 删除不会调用游戏模块钩子。当前没有后台调度器自动周期调用该方法。
 
 ## 房间模型
 
@@ -144,18 +144,19 @@ game-platform.sessions[roomCode] = {
 
 ## 断线重连策略
 
-建议默认规则：
+当前实现：
 
 - WebSocket 断开后，不立刻删除玩家。
-- 断线后 60 秒内，房间显示玩家掉线。
-- 断线后 10 分钟内，允许原玩家恢复。
-- 超过恢复窗口，平台触发正式离开。
-- 所有玩家断线后，房间保留 10 到 30 分钟。
+- 只要房间仍存在，且 `playerId` + `sessionToken` 校验通过，原玩家可以重连。
+- 当前没有按单个玩家断线 TTL 自动触发正式离开的实现。
+- 所有玩家断线后，房间可由 `RoomManager.cleanup_expired_rooms(...)` 按 `EMPTY_ROOM_TTL_SECONDS` 清理。
 - 重连成功后，后端发送完整房间快照和游戏状态快照。
 
 重连后优先发送完整状态，不依赖补发断线期间的每条事件。
 
 每个 WebSocket 连接都会分配独立 `connection_id`。断线清理时，平台只在待清理的 `connection_id` 仍然等于玩家当前连接时才标记掉线；如果玩家已经用新连接重连，旧连接的关闭事件不会覆盖新连接状态。
+
+`DISCONNECTED_PLAYER_TTL_SECONDS` 是预留配置，当前未接入玩家级断线清理逻辑。
 
 ## 游戏模块契约
 
