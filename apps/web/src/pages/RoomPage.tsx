@@ -6,6 +6,7 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { TextField } from "../components/ui/TextField";
 import { getRoom, joinRoom, type PlayerSummary, type RoomSummary } from "../api/client";
 import { LobbyDemo } from "../games/lobby-demo/LobbyDemo";
+import { FakePersonGame } from "../games/fake-person/FakePersonGame";
 import { getRoomSession, saveRoomSession, type RoomSession } from "../platform/sessionStore";
 import { useRoomSocket, type SocketStatus } from "../platform/useRoomSocket";
 
@@ -274,13 +275,15 @@ export function RoomPage({ roomCode }: RoomPageProps) {
             roomLoading={roomLoading}
           />
 
-          {visibleRoom ? (
-            <LobbyDemo room={visibleRoom} gameState={snapshot?.game} onAction={sendGameAction} />
+          {visibleRoom && session ? (
+            visibleRoom.gameId === "fake-person" ? (
+              <FakePersonGame room={visibleRoom} gameState={snapshot?.game} playerId={session.playerId} onAction={sendGameAction} />
+            ) : (
+              <LobbyDemo room={visibleRoom} gameState={snapshot?.game} onAction={sendGameAction} />
+            )
           ) : (
             <Panel>
-              <p className="state-text" aria-live="polite">
-                等待房间快照…
-              </p>
+              <p className="state-text" aria-live="polite">等待房间快照…</p>
             </Panel>
           )}
         </section>
