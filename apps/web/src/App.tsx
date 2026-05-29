@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { GameCatalog } from "./platform/GameCatalog";
+import { getRoomSession } from "./platform/sessionStore";
 import { HomePage } from "./pages/HomePage";
 import { RoomPage } from "./pages/RoomPage";
 
@@ -18,6 +19,18 @@ export function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
+  const [currentGameId, setCurrentGameId] = useState<string>();
+
+  useEffect(() => {
+    const roomMatch = path.match(/^\/rooms\/([0-9]{6})$/);
+    if (roomMatch) {
+      const session = getRoomSession(roomMatch[1]);
+      setCurrentGameId(session?.gameId);
+    } else {
+      setCurrentGameId(undefined);
+    }
+  }, [path]);
+
   const roomMatch = path.match(/^\/rooms\/([0-9]{6})$/);
 
   return (
@@ -27,7 +40,7 @@ export function App() {
       </a>
       <div className="site-actions" role="group" aria-label="平台工具">
         <ThemeToggle />
-        <GameCatalog />
+        <GameCatalog gameId={currentGameId} />
       </div>
       {roomMatch ? <RoomPage roomCode={roomMatch[1]} /> : <HomePage />}
     </>
