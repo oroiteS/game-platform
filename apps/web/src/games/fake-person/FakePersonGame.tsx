@@ -483,7 +483,7 @@ function RevealPhase({
           )}
           <Button
             variant={hasUnguessed ? "secondary" : "primary"}
-            onClick={() => onAction({ type: "next_player" })}
+            onClick={() => onAction({ type: "end_game" })}
           >
             结束游戏
           </Button>
