@@ -21,6 +21,9 @@ type ServerMessage =
       message?: string;
     };
 
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const HEARTBEAT_MESSAGE = JSON.stringify({ type: "heartbeat" });
+
 function roomSocketUrl(roomCode: string, session: RoomSession): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const query = new URLSearchParams({
@@ -50,12 +53,30 @@ export function useRoomSocket(roomCode: string | null, session: RoomSession | nu
     const socket = new WebSocket(roomSocketUrl(roomCode, session));
     socketRef.current = socket;
     const isCurrentSocket = () => socketRef.current === socket;
+    let heartbeatIntervalId: ReturnType<typeof window.setInterval> | null = null;
+
+    const clearHeartbeat = () => {
+      if (heartbeatIntervalId === null) {
+        return;
+      }
+      window.clearInterval(heartbeatIntervalId);
+      heartbeatIntervalId = null;
+    };
+
+    const sendHeartbeat = () => {
+      if (!isCurrentSocket() || socket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      socket.send(HEARTBEAT_MESSAGE);
+    };
 
     socket.addEventListener("open", () => {
       if (!isCurrentSocket()) {
         return;
       }
       setStatus("open");
+      clearHeartbeat();
+      heartbeatIntervalId = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
     });
 
     socket.addEventListener("message", (event) => {
@@ -77,6 +98,7 @@ export function useRoomSocket(roomCode: string | null, session: RoomSession | nu
     });
 
     socket.addEventListener("error", () => {
+      clearHeartbeat();
       if (!isCurrentSocket()) {
         return;
       }
@@ -84,6 +106,7 @@ export function useRoomSocket(roomCode: string | null, session: RoomSession | nu
     });
 
     socket.addEventListener("close", () => {
+      clearHeartbeat();
       if (!isCurrentSocket()) {
         return;
       }
@@ -91,6 +114,7 @@ export function useRoomSocket(roomCode: string | null, session: RoomSession | nu
     });
 
     return () => {
+      clearHeartbeat();
       if (isCurrentSocket()) {
         socketRef.current = null;
       }

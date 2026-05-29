@@ -116,7 +116,8 @@ apps/api/
 - `SQLITE_DB_PATH`：SQLite 文件路径，默认指向 `apps/api/var/game-platform.sqlite3`。
 - `ROOM_TTL_SECONDS`：房间最大保留时间。
 - `EMPTY_ROOM_TTL_SECONDS`：所有玩家断线后的空房间保留时间。
-- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留配置，当前未接入玩家级断线清理逻辑；当前重连取决于房间仍存在且 `sessionToken` 校验通过。
+- `PLAYER_ONLINE_TIMEOUT_SECONDS`：玩家最后一次心跳或动作超过该秒数后，平台可将其在线状态标记为断线；默认 30 秒。
+- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留配置，当前不删除单个断线玩家；重连取决于房间仍存在且 `sessionToken` 校验通过。
 - `ROOM_CLEANUP_ENABLED`：预留配置，当前没有后台调度器读取该配置自动执行清理。
 - `ROOM_CLEANUP_INTERVAL_SECONDS`：预留配置，当前没有后台调度器读取该配置作为清理间隔。
 

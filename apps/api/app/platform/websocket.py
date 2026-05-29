@@ -10,6 +10,8 @@ from flask import request
 
 from app.platform.errors import PlatformError
 
+DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS = 30
+
 
 def build_room_snapshot_message(room: dict[str, Any], game: dict[str, Any]) -> dict[str, Any]:
     return {"type": "room_snapshot", "room": room, "game": game}
@@ -23,6 +25,12 @@ def build_error_message(code: str, message: str) -> dict[str, str]:
 class RoomConnection:
     websocket: Any
     player_id: str
+
+
+@dataclass(frozen=True)
+class ClientMessage:
+    type: str
+    action: dict[str, Any] | None = None
 
 
 class ConnectionHub:
@@ -84,6 +92,19 @@ class ConnectionHub:
             self.remove(room_code, connection_id)
 
 
+def broadcast_player_timeout_snapshots(
+    hub: ConnectionHub,
+    room_manager: Any,
+    timeout_seconds: int = DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS,
+) -> list[str]:
+    changed_room_codes = room_manager.mark_inactive_connected_players_disconnected(
+        timeout_seconds=timeout_seconds,
+    )
+    for changed_room_code in changed_room_codes:
+        hub.broadcast_snapshots(changed_room_code, room_manager)
+    return changed_room_codes
+
+
 def _send_error(websocket: Any, code: str, message: str) -> None:
     websocket.send(json.dumps(build_error_message(code, message)))
 
@@ -104,7 +125,7 @@ def _read_connection_credentials(query_string: bytes | str) -> tuple[str, str]:
     return player_id, session_token
 
 
-def decode_client_message(raw_message: Any) -> tuple[dict[str, Any] | None, str | None]:
+def decode_client_message(raw_message: Any) -> tuple[ClientMessage | None, str | None]:
     try:
         message = json.loads(raw_message)
     except (TypeError, json.JSONDecodeError):
@@ -112,16 +133,27 @@ def decode_client_message(raw_message: Any) -> tuple[dict[str, Any] | None, str 
 
     if not isinstance(message, dict):
         return None, "invalid_message"
-    if not _is_game_action_message(message):
+    if _is_heartbeat_message(message):
+        return ClientMessage(type="heartbeat"), None
+    if _is_game_action_message(message):
+        return ClientMessage(type="game_action", action=message["action"]), None
+    else:
         return None, "invalid_message"
-    return message["action"], None
 
 
 def _is_game_action_message(message: dict[str, Any]) -> bool:
     return message.get("type") == "game_action" and isinstance(message.get("action"), dict)
 
 
-def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
+def _is_heartbeat_message(message: dict[str, Any]) -> bool:
+    return message.get("type") == "heartbeat"
+
+
+def register_websocket_routes(
+    sock: Any,
+    room_manager: Any,
+    player_timeout_seconds: int = DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS,
+) -> ConnectionHub:
     hub = ConnectionHub()
 
     @sock.route("/ws/rooms/<room_code>")
@@ -143,7 +175,7 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                 if raw_message is None:
                     break
 
-                action, error_code = decode_client_message(raw_message)
+                client_message, error_code = decode_client_message(raw_message)
                 if error_code == "invalid_json":
                     _send_error(websocket, "invalid_json", "Message must be valid JSON.")
                     continue
@@ -151,12 +183,33 @@ def register_websocket_routes(sock: Any, room_manager: Any) -> ConnectionHub:
                     _send_error(
                         websocket,
                         "invalid_message",
-                        'Message must be {"type": "game_action", "action": {...}}.',
+                        'Message must be {"type": "heartbeat"} or {"type": "game_action", "action": {...}}.',
                     )
                     continue
 
+                if client_message is not None and client_message.type == "heartbeat":
+                    try:
+                        room_manager.record_heartbeat(room_code, player_id, connection_id)
+                        broadcast_player_timeout_snapshots(
+                            hub,
+                            room_manager,
+                            timeout_seconds=player_timeout_seconds,
+                        )
+                    except PlatformError as error:
+                        _send_error(websocket, error.code, error.message)
+                    continue
+
+                if client_message is None or client_message.action is None:
+                    _send_error(websocket, "invalid_message", "Message action is required.")
+                    continue
+
                 try:
-                    result = room_manager.handle_action(room_code, player_id, action)
+                    result = room_manager.handle_action(
+                        room_code,
+                        player_id,
+                        client_message.action,
+                        connection_id,
+                    )
                 except PlatformError as error:
                     _send_error(websocket, error.code, error.message)
                     continue

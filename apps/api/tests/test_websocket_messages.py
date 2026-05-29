@@ -2,6 +2,7 @@ import json
 
 from flask import Flask
 
+from app.platform import websocket as websocket_module
 from app.platform.errors import PlatformError
 from app.platform.websocket import (
     ConnectionHub,
@@ -111,11 +112,21 @@ def test_decode_client_message_distinguishes_invalid_json_from_invalid_message()
 
 def test_decode_client_message_returns_game_action():
     action = {"type": "set_message", "payload": {"message": "x"}}
-
-    assert decode_client_message(json.dumps({"type": "game_action", "action": action})) == (
-        action,
-        None,
+    client_message, error_code = decode_client_message(
+        json.dumps({"type": "game_action", "action": action})
     )
+
+    assert error_code is None
+    assert getattr(client_message, "type", None) == "game_action"
+    assert getattr(client_message, "action", None) == action
+
+
+def test_decode_client_message_returns_heartbeat():
+    client_message, error_code = decode_client_message(json.dumps({"type": "heartbeat"}))
+
+    assert error_code is None
+    assert getattr(client_message, "type", None) == "heartbeat"
+    assert getattr(client_message, "action", None) is None
 
 
 class FakeSock:
@@ -221,5 +232,106 @@ def test_websocket_disconnect_broadcasts_disconnected_snapshot():
             "roomCode": "123456",
             "players": [{"playerId": "p1", "connected": False}],
         },
+        "game": {"viewer": "p2"},
+    }
+
+
+class HeartbeatRoomManager:
+    def __init__(self) -> None:
+        self.heartbeats: list[tuple[str, str]] = []
+
+    def reconnect(
+        self,
+        room_code: str,
+        player_id: str,
+        session_token: str,
+        connection_id: str | None = None,
+    ) -> None:
+        pass
+
+    def get_snapshot(self, room_code: str, player_id: str) -> dict[str, object]:
+        return {
+            "room": {"roomCode": room_code, "players": [{"playerId": player_id}]},
+            "game": {"viewer": player_id},
+        }
+
+    def record_heartbeat(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None = None,
+    ) -> None:
+        self.heartbeats.append((room_code, player_id))
+
+    def handle_action(self, room_code: str, player_id: str, action: dict[str, object]) -> None:
+        raise AssertionError("heartbeat must not be handled as a game action")
+
+    def mark_inactive_connected_players_disconnected(self, timeout_seconds: int) -> list[str]:
+        return []
+
+    def mark_disconnected(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None = None,
+    ) -> None:
+        pass
+
+
+def test_websocket_heartbeat_updates_last_seen_without_broadcasting_snapshot():
+    app = Flask(__name__)
+    sock = FakeSock()
+    room_manager = HeartbeatRoomManager()
+    register_websocket_routes(sock, room_manager)
+    handler = sock.routes["/ws/rooms/<room_code>"]
+    websocket = FakeWebSocket([json.dumps({"type": "heartbeat"})])
+
+    with app.test_request_context("/ws/rooms/123456?playerId=p1&sessionToken=token"):
+        handler(websocket, "123456")
+
+    assert room_manager.heartbeats == [("123456", "p1")]
+    assert len(websocket.sent) == 1
+    assert json.loads(websocket.sent[0])["type"] == "room_snapshot"
+
+
+class TimeoutBroadcastRoomManager:
+    def __init__(self) -> None:
+        self.timeout_checks: list[int] = []
+
+    def mark_inactive_connected_players_disconnected(self, timeout_seconds: int) -> list[str]:
+        self.timeout_checks.append(timeout_seconds)
+        return ["123456"]
+
+    def get_snapshot(self, room_code: str, player_id: str) -> dict[str, object]:
+        return {
+            "room": {"roomCode": room_code, "players": [{"playerId": "p1", "connected": False}]},
+            "game": {"viewer": player_id},
+        }
+
+
+def test_broadcast_player_timeout_snapshots_broadcasts_changed_rooms():
+    hub = ConnectionHub()
+    websocket = FakeWebSocket()
+    room_manager = TimeoutBroadcastRoomManager()
+    hub.add("123456", "conn-p2", websocket, "p2")
+    broadcast_player_timeout_snapshots = getattr(
+        websocket_module,
+        "broadcast_player_timeout_snapshots",
+        None,
+    )
+
+    assert callable(broadcast_player_timeout_snapshots)
+
+    changed_room_codes = broadcast_player_timeout_snapshots(
+        hub,
+        room_manager,
+        timeout_seconds=30,
+    )
+
+    assert changed_room_codes == ["123456"]
+    assert room_manager.timeout_checks == [30]
+    assert json.loads(websocket.sent[-1]) == {
+        "type": "room_snapshot",
+        "room": {"roomCode": "123456", "players": [{"playerId": "p1", "connected": False}]},
         "game": {"viewer": "p2"},
     }

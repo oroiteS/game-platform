@@ -23,6 +23,7 @@ def create_app(
         ROOM_TTL_SECONDS=60 * 60 * 12,
         EMPTY_ROOM_TTL_SECONDS=60 * 30,
         DISCONNECTED_PLAYER_TTL_SECONDS=60 * 10,
+        PLAYER_ONLINE_TIMEOUT_SECONDS=30,
     )
     if config is not None:
         app.config.update(config)
@@ -35,7 +36,11 @@ def create_app(
     app.config["ROOM_MANAGER"] = room_manager
     app.register_blueprint(platform_bp)
     sock = Sock(app)
-    register_websocket_routes(sock, room_manager)
+    register_websocket_routes(
+        sock,
+        room_manager,
+        player_timeout_seconds=app.config["PLAYER_ONLINE_TIMEOUT_SECONDS"],
+    )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

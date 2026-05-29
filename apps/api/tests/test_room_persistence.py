@@ -1,6 +1,7 @@
 import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 from app.platform.services.room_manager import RoomManager
 from app.platform.services.room_storage import SQLiteRoomStorage
@@ -129,3 +130,38 @@ def test_restarted_room_manager_allows_reconnect_with_existing_session_token(tmp
     assert reconnect.player.connected is True
     assert reconnect.player.connection_id == "conn-1"
     assert reconnect.session_token == created.session_token
+
+
+def test_sqlite_backed_manager_tracks_active_connection_id_for_heartbeat(
+    tmp_path,
+    monkeypatch,
+):
+    db_path = tmp_path / "rooms.sqlite3"
+    manager = sqlite_manager(db_path)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    reconnect_at = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    heartbeat_at = reconnect_at + timedelta(seconds=10)
+
+    monkeypatch.setattr(
+        "app.platform.services.room_manager._utc_now",
+        lambda: reconnect_at,
+    )
+    manager.reconnect(
+        created.room.room_code,
+        created.player.player_id,
+        created.session_token,
+        connection_id="conn-1",
+    )
+    monkeypatch.setattr(
+        "app.platform.services.room_manager._utc_now",
+        lambda: heartbeat_at,
+    )
+
+    manager.record_heartbeat(
+        created.room.room_code,
+        created.player.player_id,
+        connection_id="conn-1",
+    )
+
+    room = manager.get_room(created.room.room_code)
+    assert room.players[0].last_seen_at == heartbeat_at

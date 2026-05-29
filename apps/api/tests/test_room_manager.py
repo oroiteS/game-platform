@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app.platform.errors import PlatformError
@@ -127,6 +129,76 @@ def test_snapshot_reflects_disconnected_and_reconnected_player_state():
 
     assert reconnected_snapshot["room"]["players"][0]["connected"] is True
     assert reconnected_snapshot["game"]["players"][0]["connected"] is True
+
+
+def test_record_heartbeat_updates_player_last_seen(monkeypatch):
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    heartbeat_at = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+
+    result.player.last_seen_at = heartbeat_at - timedelta(seconds=20)
+    monkeypatch.setattr(
+        "app.platform.services.room_manager._utc_now",
+        lambda: heartbeat_at,
+    )
+
+    manager.record_heartbeat(result.room.room_code, result.player.player_id)
+
+    assert result.player.connected is True
+    assert result.player.disconnected_at is None
+    assert result.player.last_seen_at == heartbeat_at
+
+
+def test_mark_inactive_connected_players_disconnected_updates_room_and_game_state():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    result.player.last_seen_at = now - timedelta(seconds=31)
+
+    changed_room_codes = manager.mark_inactive_connected_players_disconnected(
+        timeout_seconds=30,
+        now=now,
+    )
+
+    assert changed_room_codes == [result.room.room_code]
+    assert result.player.connected is False
+    assert result.player.connection_id is None
+    assert result.player.disconnected_at == now
+    snapshot = manager.get_snapshot(result.room.room_code, result.player.player_id)
+    assert snapshot["room"]["players"][0]["connected"] is False
+    assert snapshot["game"]["players"][0]["connected"] is False
+
+
+def test_mark_inactive_connected_players_disconnected_keeps_recent_players_online():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    result.player.last_seen_at = now - timedelta(seconds=29)
+
+    changed_room_codes = manager.mark_inactive_connected_players_disconnected(
+        timeout_seconds=30,
+        now=now,
+    )
+
+    assert changed_room_codes == []
+    assert result.player.connected is True
+
+
+def test_disconnected_player_cannot_handle_game_action():
+    manager = RoomManager()
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    manager.mark_disconnected(result.room.room_code, result.player.player_id)
+
+    with pytest.raises(PlatformError) as error:
+        manager.handle_action(
+            result.room.room_code,
+            result.player.player_id,
+            {"type": "set_message", "payload": {"message": "after disconnect"}},
+        )
+
+    assert error.value.code == "player_disconnected"
+    snapshot = manager.get_snapshot(result.room.room_code, result.player.player_id)
+    assert snapshot["game"]["messages"] == []
 
 
 def test_reconnect_rejects_invalid_token():

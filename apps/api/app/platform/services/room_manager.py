@@ -22,6 +22,7 @@ MAX_NICKNAME_LENGTH = 24
 PLATFORM_ROOM_CAPACITY = 30
 DEFAULT_ROOM_TTL_SECONDS = 60 * 60 * 12
 DEFAULT_EMPTY_ROOM_TTL_SECONDS = 60 * 30
+DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS = 30
 
 
 def _utc_now() -> datetime:
@@ -39,6 +40,8 @@ class RoomManager:
         self._create_room_lock = threading.Lock()
         self._room_locks_lock = threading.Lock()
         self._room_locks: dict[str, threading.RLock] = {}
+        self._active_connections_lock = threading.Lock()
+        self._active_connections: dict[tuple[str, str], str] = {}
         if getattr(self._storage, "loads_saved_connection_state", False):
             self._mark_restored_rooms_disconnected()
 
@@ -139,6 +142,7 @@ class RoomManager:
 
             player.connected = True
             player.connection_id = connection_id
+            self._set_active_connection(room_code, player_id, connection_id)
             player.disconnected_at = None
             player.last_seen_at = _utc_now()
             game = self._get_game(room.game_id)
@@ -147,6 +151,24 @@ class RoomManager:
             room.updated_at = _utc_now()
             self._storage.save_room(room)
             return JoinResult(room=room, player=player, session_token=session_token)
+
+    def record_heartbeat(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None = None,
+    ) -> Player:
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            player = self._require_player(room, player_id)
+            if not self._connection_matches(room_code, player_id, connection_id):
+                return player
+
+            heartbeat_at = _utc_now()
+            player.last_seen_at = heartbeat_at
+            room.updated_at = heartbeat_at
+            self._storage.save_room(room)
+            return player
 
     def mark_disconnected(
         self,
@@ -157,12 +179,13 @@ class RoomManager:
         with self._lock_for_room(room_code):
             room = self._get_room_by_code(room_code)
             player = self._require_player(room, player_id)
-            if connection_id is not None and player.connection_id != connection_id:
+            if not self._connection_matches(room_code, player_id, connection_id):
                 return None
 
             disconnected_at = _utc_now()
             player.connected = False
             player.connection_id = None
+            self._clear_active_connection(room_code, player_id)
             player.disconnected_at = disconnected_at
             player.last_seen_at = disconnected_at
             game = self._get_game(room.game_id)
@@ -172,12 +195,61 @@ class RoomManager:
             self._storage.save_room(room)
             return player
 
-    def handle_action(self, room_code: str, player_id: str, action: dict[str, Any]) -> dict[str, Any]:
+    def mark_inactive_connected_players_disconnected(
+        self,
+        timeout_seconds: int = DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS,
+        now: datetime | None = None,
+    ) -> list[str]:
+        timeout_at = now if now is not None else _utc_now()
+        changed_room_codes: list[str] = []
+
+        for room_code in self._storage.list_room_codes():
+            with self._lock_for_room(room_code):
+                room = self._get_room_by_code(room_code)
+
+                game = self._get_game(room.game_id)
+                changed = False
+                for player in room.players:
+                    if not player.connected:
+                        continue
+                    if timeout_at - player.last_seen_at <= timedelta(seconds=timeout_seconds):
+                        continue
+
+                    player.connected = False
+                    player.connection_id = None
+                    self._clear_active_connection(room.room_code, player.player_id)
+                    player.disconnected_at = timeout_at
+                    player.last_seen_at = timeout_at
+                    result = game.module.on_player_disconnect(
+                        room.game_state,
+                        player.to_game_dict(),
+                    )
+                    room.game_state = result.get("state", room.game_state)
+                    changed = True
+
+                if changed:
+                    room.updated_at = timeout_at
+                    self._storage.save_room(room)
+                    changed_room_codes.append(room.room_code)
+
+        return changed_room_codes
+
+    def handle_action(
+        self,
+        room_code: str,
+        player_id: str,
+        action: dict[str, Any],
+        connection_id: str | None = None,
+    ) -> dict[str, Any]:
         with self._lock_for_room(room_code):
             room = self._get_room_by_code(room_code)
             player = self._find_player(room, player_id)
             if player is None:
                 raise PlatformError("player_not_found", "Player was not found.", 404)
+            if not player.connected:
+                raise PlatformError("player_disconnected", "Player is disconnected.", 409)
+            if not self._connection_matches(room_code, player_id, connection_id):
+                raise PlatformError("stale_connection", "Connection is no longer active.", 409)
 
             player.last_seen_at = _utc_now()
             game = self._get_game(room.game_id)
@@ -241,7 +313,43 @@ class RoomManager:
         room = self._storage.get_room(room_code)
         if room is None:
             raise PlatformError("room_not_found", "Room was not found.", 404)
+        self._apply_active_connection_ids(room)
         return room
+
+    def _set_active_connection(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None,
+    ) -> None:
+        with self._active_connections_lock:
+            key = (room_code, player_id)
+            if connection_id is None:
+                self._active_connections.pop(key, None)
+                return
+            self._active_connections[key] = connection_id
+
+    def _clear_active_connection(self, room_code: str, player_id: str) -> None:
+        with self._active_connections_lock:
+            self._active_connections.pop((room_code, player_id), None)
+
+    def _connection_matches(
+        self,
+        room_code: str,
+        player_id: str,
+        connection_id: str | None,
+    ) -> bool:
+        if connection_id is None:
+            return True
+        with self._active_connections_lock:
+            return self._active_connections.get((room_code, player_id)) == connection_id
+
+    def _apply_active_connection_ids(self, room: Room) -> None:
+        with self._active_connections_lock:
+            for player in room.players:
+                player.connection_id = self._active_connections.get(
+                    (room.room_code, player.player_id)
+                )
 
     def _is_room_expired(
         self,

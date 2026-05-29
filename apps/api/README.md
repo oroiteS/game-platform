@@ -27,7 +27,8 @@
 - `SQLITE_DB_PATH`
 - `ROOM_TTL_SECONDS`
 - `EMPTY_ROOM_TTL_SECONDS`
-- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留，当前未接入玩家级断线清理逻辑。
+- `PLAYER_ONLINE_TIMEOUT_SECONDS`：玩家心跳或动作超过该秒数未更新后，可被标记为断线；默认 30 秒。
+- `DISCONNECTED_PLAYER_TTL_SECONDS`：预留，当前不删除单个断线玩家。
 - `ROOM_CLEANUP_ENABLED`：预留，当前没有后台调度器自动执行清理。
 - `ROOM_CLEANUP_INTERVAL_SECONDS`：预留，当前没有后台调度器读取该间隔。
 

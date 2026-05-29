@@ -148,7 +148,8 @@ game-platform.sessions[roomCode] = {
 
 - WebSocket 断开后，不立刻删除玩家。
 - 只要房间仍存在，且 `playerId` + `sessionToken` 校验通过，原玩家可以重连。
-- 当前没有按单个玩家断线 TTL 自动触发正式离开的实现。
+- 前端 WebSocket 打开后会定期发送 `{"type": "heartbeat"}`；后端用心跳更新 `lastSeenAt`。
+- 当后端在后续心跳处理中发现某个已连接玩家超过 `PLAYER_ONLINE_TIMEOUT_SECONDS` 未更新 `lastSeenAt`，会将该玩家标记为断线并广播房间快照。
 - 所有玩家断线后，房间可由 `RoomManager.cleanup_expired_rooms(...)` 按 `EMPTY_ROOM_TTL_SECONDS` 清理。
 - 重连成功后，后端发送完整房间快照和游戏状态快照。
 
@@ -156,7 +157,7 @@ game-platform.sessions[roomCode] = {
 
 每个 WebSocket 连接都会分配独立 `connection_id`。断线清理时，平台只在待清理的 `connection_id` 仍然等于玩家当前连接时才标记掉线；如果玩家已经用新连接重连，旧连接的关闭事件不会覆盖新连接状态。
 
-`DISCONNECTED_PLAYER_TTL_SECONDS` 是预留配置，当前未接入玩家级断线清理逻辑。
+`DISCONNECTED_PLAYER_TTL_SECONDS` 是预留配置，当前不删除单个断线玩家；在线状态超时由 `PLAYER_ONLINE_TIMEOUT_SECONDS` 控制。
 
 ## 游戏模块契约
 

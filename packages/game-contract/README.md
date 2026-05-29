@@ -99,6 +99,16 @@ privateEvents: list
 }
 ```
 
+平台客户端还会发送心跳消息：
+
+```json
+{
+  "type": "heartbeat"
+}
+```
+
+心跳只用于平台层更新玩家在线状态，不会进入游戏模块的 `handleAction`。
+
 ## Snapshot
 
 重连后平台会调用游戏的 `getStateSnapshot`，把当前完整状态发送给客户端。
