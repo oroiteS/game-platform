@@ -27,12 +27,14 @@ function saveAndNavigate(response: JoinResponse): void {
 function GameSelection({
   games,
   selectedGameId,
+  selectedGame,
   loading,
   error,
   onSelect,
 }: {
   games: GameSummary[];
   selectedGameId: string;
+  selectedGame: GameSummary | null;
   loading: boolean;
   error: string | null;
   onSelect: (gameId: string) => void;
@@ -41,53 +43,36 @@ function GameSelection({
     <section className="game-picker" aria-labelledby="game-picker-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Games</p>
+          <p className="eyebrow">Game</p>
           <h2 id="game-picker-title">选择游戏</h2>
         </div>
       </div>
 
-      {loading ? <p className="state-text" aria-live="polite">正在读取游戏列表…</p> : null}
-      {error ? <FieldError message={error} /> : null}
-      {!loading && !error && games.length === 0 ? (
-        <p className="state-text">暂无可创建的游戏</p>
-      ) : null}
+      {loading && <p className="state-text">加载游戏列表…</p>}
+      {error && <p className="state-text" style={{ color: "var(--color-danger)" }}>{error}</p>}
+      {!loading && !error && games.length === 0 && <p className="state-text">暂无可用游戏。</p>}
 
-      {games.length > 0 ? (
-        <label className="select-field" htmlFor="create-game-select">
-          <span className="text-field__label">游戏</span>
+      {!loading && !error && games.length > 0 && (
+        <>
           <select
-            id="create-game-select"
-            name="gameSelection"
+            id="game-select"
             value={selectedGameId}
-            onChange={(event) => onSelect(event.target.value)}
+            onChange={(e) => onSelect(e.target.value)}
+            style={{ width: "100%", padding: "8px 12px", fontSize: "1rem", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" }}
           >
             {games.map((game) => (
               <option key={game.id} value={game.id}>
-                {game.name} ({game.minPlayers}-{game.maxPlayers} 人)
+                {game.name} ({game.minPlayers}-{game.maxPlayers}人)
               </option>
             ))}
           </select>
-        </label>
-      ) : null}
-
-      <div className="game-options" role="radiogroup" aria-label="可选游戏">
-        {games.map((game) => (
-          <button
-            className={game.id === selectedGameId ? "game-option is-selected" : "game-option"}
-            key={game.id}
-            type="button"
-            role="radio"
-            aria-checked={game.id === selectedGameId}
-            onClick={() => onSelect(game.id)}
-          >
-            <strong>{game.name}</strong>
-            <span>{game.summary}</span>
-            <small>
-              {game.minPlayers}-{game.maxPlayers} 人
-            </small>
-          </button>
-        ))}
-      </div>
+          {selectedGame && (
+            <p className="state-text" style={{ marginTop: 8 }}>
+              {selectedGame.name} — {selectedGame.minPlayers}-{selectedGame.maxPlayers} 人
+            </p>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -295,6 +280,7 @@ export function HomePage() {
           <GameSelection
             games={games}
             selectedGameId={selectedGameId}
+            selectedGame={selectedGame}
             loading={gamesLoading}
             error={gamesError}
             onSelect={onSelectGame}
