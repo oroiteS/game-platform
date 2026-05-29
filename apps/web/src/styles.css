@@ -548,8 +548,15 @@ dd {
 .rules-text {
   color: var(--color-muted);
   line-height: 1.55;
-  white-space: pre-wrap;
+  white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* 仅重置最外层 wrapper div，保留内部 div 的卡片边框效果 */
+.rules-text > div {
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .room-shell {

@@ -22,7 +22,7 @@ export const gameConfig = {
 
 `id` 应只使用小写字母、数字和连字符。
 
-`summary` 显示在 Games 目录和游戏列表中，应短而明确。`rules` 显示在游戏规则详情中，应说明玩法、胜负条件、行动限制和特殊人数规则。
+`summary` 显示在 Games 目录和游戏列表中，应短而明确。`rules` 显示在游戏规则详情弹窗中，支持 HTML——可以直接写富文本（列表、表格、强调色等），平台用 `dangerouslySetInnerHTML` 渲染。样式默认继承平台 CSS 变量，也可以内联 style 覆盖。
 
 ## 人数和容量
 

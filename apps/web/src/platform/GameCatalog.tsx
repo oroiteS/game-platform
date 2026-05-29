@@ -47,7 +47,7 @@ function GameDetailPanel({
               </dd>
             </div>
           </dl>
-          <p className="rules-text">{game.rules}</p>
+          <div className="rules-text" dangerouslySetInnerHTML={{ __html: game.rules }} />
         </div>
       ) : null}
     </section>

@@ -32,9 +32,11 @@ htmlcov/
 .vscode/
 
 # Agent and planning artifacts
+.superpowers/
 docs/superpowers/
 .codex/
 .claude/
+uv.lock
 
 # Local git worktrees
 .worktrees/

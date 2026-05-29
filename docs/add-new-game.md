@@ -77,7 +77,9 @@ games/<game-id>/
 - 玩家操作处理。
 - 状态快照。
 
-游戏元信息必须包含 `id`、`name`、`summary`、`rules`、`minPlayers`、`maxPlayers`。`summary` 显示在 Games 目录和游戏列表中，用于帮助玩家快速理解游戏；`rules` 显示在规则详情中，用于说明玩法、胜负条件、行动限制和特殊人数要求。
+游戏元信息必须包含 `id`、`name`、`summary`、`rules`、`minPlayers`、`maxPlayers`。`summary` 显示在 Games 目录和游戏列表中，用于帮助玩家快速理解游戏；`rules` 显示在规则详情弹窗中，用于说明玩法、胜负条件、行动限制和特殊人数要求。
+
+`rules` 支持 HTML，可以写富文本排版（列表、表格、强调色等）。平台会用 `dangerouslySetInnerHTML` 渲染，样式默认继承平台 CSS 变量（如 `var(--color-accent)`）。需要自定义样式时直接写内联 style 或嵌入 `<style>` 标签即可。
 
 ## 人数和本局容量
 
