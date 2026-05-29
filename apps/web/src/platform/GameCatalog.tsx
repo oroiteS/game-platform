@@ -54,7 +54,11 @@ function GameDetailPanel({
   );
 }
 
-export function GameCatalog() {
+type GameCatalogProps = {
+  gameId?: string;
+};
+
+export function GameCatalog({ gameId }: GameCatalogProps) {
   const panelId = useId();
   const detailTitleId = useId();
   const [open, setOpen] = useState(false);
@@ -70,6 +74,7 @@ export function GameCatalog() {
   const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restoreFocusRef = useRef(false);
   const detailRequestIdRef = useRef(0);
+  const [search, setSearch] = useState("");
   const { games, loading: gamesLoading, error: gamesError } = useGames();
 
   const closeGameDetail = () => {
@@ -187,6 +192,17 @@ export function GameCatalog() {
       });
   }, [selectedGameId]);
 
+  useEffect(() => {
+    if (open && gameId) {
+      setSelectedGameId(gameId);
+      setSearch("");
+    }
+  }, [open, gameId]);
+
+  const filteredGames = games.filter((g) =>
+    g.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <div className="game-catalog">
       <Button
@@ -225,14 +241,29 @@ export function GameCatalog() {
             </Button>
           </div>
 
+          <div className="catalog-search">
+            <input
+              type="search"
+              className="catalog-search-input"
+              placeholder="搜索游戏..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="搜索游戏"
+            />
+          </div>
+
           {gamesLoading ? <p className="state-text" aria-live="polite">正在读取游戏列表…</p> : null}
           {gamesError ? <FieldError message={gamesError} /> : null}
           {!gamesLoading && !gamesError && games.length === 0 ? (
             <p className="state-text">暂无游戏</p>
           ) : null}
 
+          {!gamesLoading && !gamesError && games.length > 0 && filteredGames.length === 0 ? (
+            <p className="state-text">未找到匹配的游戏</p>
+          ) : null}
+
           <div className="catalog-list" aria-label="游戏列表">
-            {games.map((game) => (
+            {filteredGames.map((game) => (
               <button
                 className={game.id === selectedGameId ? "catalog-item is-selected" : "catalog-item"}
                 key={game.id}
