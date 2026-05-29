@@ -52,6 +52,8 @@ games/<game-id>/
 - WebSocket 连接管理。
 - 断线重连恢复。
 - 匿名身份生成。
+- SQLite 持久化。
+- 平台 sessionToken 或 sessionTokenHash 存储。
 - localStorage 会话格式。
 - 平台首页。
 
@@ -107,6 +109,8 @@ games/<game-id>/
 ```
 
 后端负责校验该操作是否合法，并广播新的状态快照。
+
+游戏返回的状态需要保持 JSON 可序列化，平台会负责保存和恢复该状态。
 
 ## 后端事件建议
 

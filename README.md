@@ -36,7 +36,7 @@ docs/
 - 前端：pnpm + React + Vite + TypeScript
 - 后端：Python + Flask，实时连接优先使用 Flask-Sock
 - Python 包管理：uv
-- 第一阶段存储：内存房间状态 + 内存匿名 session 恢复信息
+- 第一阶段存储：SQLite 持久化房间、玩家、session token hash 和游戏状态；WebSocket 连接仍在进程内管理
 - 实时连接：WebSocket
 
 ## 本地启动

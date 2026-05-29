@@ -103,6 +103,8 @@ privateEvents: list
 
 重连后平台会调用游戏的 `getStateSnapshot`，把当前完整状态发送给客户端。
 
+平台可能把 `gameState` 持久化到 SQLite，因此游戏状态必须保持 JSON 可序列化。游戏模块不应依赖进程内对象身份、文件句柄、连接对象或其他不可序列化状态。
+
 快照应满足：
 
 - 足够恢复 UI。

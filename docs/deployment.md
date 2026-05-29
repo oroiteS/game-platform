@@ -12,8 +12,8 @@ Caddy 或 Nginx
 
 Python 后端
   -> 单进程
-  -> 内存房间状态
-  -> SQLite 恢复信息
+  -> SQLite 持久化房间、玩家、session token hash 和游戏状态
+  -> 进程内 WebSocket 连接管理
 ```
 
 ## 早期避免
@@ -39,9 +39,15 @@ uv run python main.py
 
 具体命令以项目实际依赖和入口为准。
 
+后端需要一个可写 SQLite 文件路径，默认配置为 `SQLITE_DB_PATH`。生产部署时应把该路径放到持久化磁盘目录，并确保后端进程有读写权限。SQLite 文件应纳入备份策略。
+
+默认应用配置会把 SQLite 文件放在 `apps/api/var/game-platform.sqlite3`。部署时可以把 `SQLITE_DB_PATH` 指向挂载盘、数据盘或其他会随发布保留的目录。
+
+SQLite 不替代跨进程实时同步。没有跨进程 WebSocket 广播前，仍推荐单后端进程。
+
 ## 扩展顺序
 
-当单进程内存房间不够用时，按这个顺序扩展：
+当单进程 SQLite 房间存储和进程内连接管理不够用时，按这个顺序扩展：
 
 1. 优化房间过期和清理策略。
 2. 引入 Redis 保存房间状态和连接映射。

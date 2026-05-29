@@ -20,7 +20,16 @@
 - 房间过期清理。
 - 游戏后端模块注册。
 
-早期推荐单进程运行，因为房间状态默认保存在内存中。
+早期推荐单进程运行。房间、玩家、session token hash 和游戏状态会保存到 SQLite；当前 WebSocket 连接仍保存在进程内。
+
+关键配置：
+
+- `SQLITE_DB_PATH`
+- `ROOM_TTL_SECONDS`
+- `EMPTY_ROOM_TTL_SECONDS`
+- `DISCONNECTED_PLAYER_TTL_SECONDS`
+- `ROOM_CLEANUP_ENABLED`
+- `ROOM_CLEANUP_INTERVAL_SECONDS`
 
 启动：
 

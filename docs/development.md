@@ -89,6 +89,7 @@ cd apps/web && pnpm rebuild esbuild
 - HTTP 路由。
 - WebSocket 路由。
 - RoomManager。
+- storage 层。
 - Session 恢复。
 - 游戏注册表。
 
@@ -107,6 +108,17 @@ apps/api/
 ```
 
 实时连接优先使用 Flask-Sock。除非项目规范被明确修改，不引入 FastAPI、Django 或其他 Python Web 框架。
+
+平台持久化通过 `RoomManager` 下方的 storage 层完成。业务规则留在 `RoomManager`，SQLite 读写留在 storage。新增持久化测试应使用 pytest `tmp_path` 创建临时 SQLite 文件。
+
+后端关键配置：
+
+- `SQLITE_DB_PATH`：SQLite 文件路径，默认指向 `apps/api/var/game-platform.sqlite3`。
+- `ROOM_TTL_SECONDS`：房间最大保留时间。
+- `EMPTY_ROOM_TTL_SECONDS`：所有玩家断线后的空房间保留时间。
+- `DISCONNECTED_PLAYER_TTL_SECONDS`：玩家断线后的恢复窗口。
+- `ROOM_CLEANUP_ENABLED`：是否启用房间清理。
+- `ROOM_CLEANUP_INTERVAL_SECONDS`：清理任务间隔。
 
 ### 后端开发命令
 
@@ -151,3 +163,4 @@ cd apps/api && uv run pytest -v
 - 加入房间。
 - sessionToken 恢复。
 - 断线超时清理。
+- SQLite 持久化和重启恢复。

@@ -8,8 +8,8 @@
 浏览器
   -> 静态前端资源
   -> /api 和 /ws 转发到单个 Python 后端
-  -> 后端使用内存管理实时房间
-  -> 第一阶段匿名 session 跟随内存房间保存
+  -> 后端使用 SQLite 持久化房间、玩家、session token hash 和游戏状态
+  -> 后端使用内存 ConnectionHub 管理当前 WebSocket 连接
 ```
 
 目录上区分平台和游戏，运行上不拆微服务。
@@ -52,7 +52,8 @@
 ```text
 1 个静态前端构建目录
 1 个 Python 后端进程
-内存 RoomManager
+SQLite 房间存储
+内存 ConnectionHub
 ```
 
 暂不引入：
@@ -65,13 +66,17 @@
 - 微服务
 - Next.js SSR
 
-如果房间状态保存在内存中，后端早期应只运行一个 worker。多 worker 会导致不同连接落到不同进程，房间状态不一致。
+SQLite 只负责轻量持久化，不负责跨进程实时广播或连接映射。后端早期仍应只运行一个 worker，避免不同连接落到不同进程后无法通过内存 `ConnectionHub` 正确广播。
 
 ## 第一阶段限制
 
-第一阶段采用内存 `RoomManager` 管理房间和游戏状态。`sessionToken` 只用于匿名玩家在同一房间内恢复身份，不等同于登录账号，也不提供跨设备持久身份。
+当前阶段采用 SQLite 持久化房间、玩家、session token hash 和游戏状态。后端进程重启后，房间和游戏状态可以从 SQLite 恢复；实时 WebSocket 连接和 connection_id 不会恢复，客户端需要用 playerId + sessionToken 重新连接。
 
-当前房间状态保存在单个后端进程内存中。后端进程重启、部署替换或崩溃后，已有房间和游戏状态会丢失；玩家需要重新创建房间。早期不引入 Redis、PostgreSQL、消息队列或多 worker 来同步房间状态。
+SQLite 解决轻量持久化，不解决跨进程 WebSocket 广播或多 worker 连接映射。因此在没有 Redis、消息队列或跨进程广播层前，后端仍建议只运行一个 worker。
+
+`sessionToken` 只用于匿名玩家在同一房间内恢复身份，不等同于登录账号，也不提供跨设备持久身份。平台只保存 `sessionTokenHash`，不保存明文 `sessionToken`。
+
+房间清理由平台层执行。超过 `ROOM_TTL_SECONDS` 的房间会被删除；所有玩家断线且超过 `EMPTY_ROOM_TTL_SECONDS` 的房间也会被删除。TTL 删除不会调用游戏模块钩子。
 
 ## 房间模型
 
