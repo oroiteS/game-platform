@@ -494,7 +494,6 @@ function RevealPhase({
         </p>
       )}
 
-      <HostControls isHost={isHost} onEndGame={() => onAction({ type: "end_game" })} />
     </section>
   );
 }
