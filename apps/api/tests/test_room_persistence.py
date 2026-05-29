@@ -1,4 +1,6 @@
 import sqlite3
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 from app.platform.services.room_manager import RoomManager
 from app.platform.services.room_storage import SQLiteRoomStorage
@@ -6,6 +8,18 @@ from app.platform.services.room_storage import SQLiteRoomStorage
 
 def sqlite_manager(db_path):
     return RoomManager(storage=SQLiteRoomStorage(db_path))
+
+
+class SlowSQLiteRoomStorage(SQLiteRoomStorage):
+    def __init__(self, database_path, delay_seconds=0.05):
+        super().__init__(database_path)
+        self.delay_seconds = delay_seconds
+        self.delayed_room_code = None
+
+    def get_room(self, room_code):
+        if room_code == self.delayed_room_code:
+            time.sleep(self.delay_seconds)
+        return super().get_room(room_code)
 
 
 def test_create_room_persists_room_host_and_game_state(tmp_path):
@@ -48,6 +62,33 @@ def test_join_room_persists_joined_player_and_capacity(tmp_path):
     assert restored.capacity == 2
     assert [player.nickname for player in restored.players] == ["Ada", "Lin"]
     assert restored.players[1].player_id == joined.player.player_id
+
+
+def test_concurrent_joins_preserve_all_players_and_game_state(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage = SlowSQLiteRoomStorage(db_path)
+    manager = RoomManager(storage=storage)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    storage.delayed_room_code = created.room.room_code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(
+                lambda nickname: manager.join_room(created.room.room_code, nickname),
+                ["Bob", "Cy"],
+            )
+        )
+
+    room = manager.get_room(created.room.room_code)
+    snapshot = manager.get_snapshot(created.room.room_code, created.player.player_id)
+
+    assert sorted(result.player.nickname for result in results) == ["Bob", "Cy"]
+    assert sorted(player.nickname for player in room.players) == ["Ada", "Bob", "Cy"]
+    assert sorted(player["nickname"] for player in snapshot["game"]["players"]) == [
+        "Ada",
+        "Bob",
+        "Cy",
+    ]
 
 
 def test_restarted_room_manager_restores_lobby_demo_state(tmp_path):

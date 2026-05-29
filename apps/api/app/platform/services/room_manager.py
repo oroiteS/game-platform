@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import random
 import string
+import threading
 from typing import Any
 from uuid import uuid4
 
@@ -35,6 +36,9 @@ class RoomManager:
     ) -> None:
         self._games = games if games is not None else create_game_registry()
         self._storage = storage if storage is not None else InMemoryRoomStorage()
+        self._create_room_lock = threading.Lock()
+        self._room_locks_lock = threading.Lock()
+        self._room_locks: dict[str, threading.RLock] = {}
         if getattr(self._storage, "loads_saved_connection_state", False):
             self._mark_restored_rooms_disconnected()
 
@@ -58,43 +62,46 @@ class RoomManager:
         nickname = self._validate_nickname(nickname)
         capacity = self._validate_capacity(requested_capacity, game)
 
-        room_code = self._generate_room_code()
-        game_state = game.module.create_initial_state(
-            {"roomCode": room_code, "gameId": game.game_id, "capacity": capacity}
-        )
-        room = Room(
-            room_code=room_code,
-            game_id=game.game_id,
-            status="waiting",
-            capacity=capacity,
-            game_state=game_state,
-        )
-        self._storage.save_room(room)
+        with self._create_room_lock:
+            room_code = self._generate_room_code()
+            game_state = game.module.create_initial_state(
+                {"roomCode": room_code, "gameId": game.game_id, "capacity": capacity}
+            )
+            room = Room(
+                room_code=room_code,
+                game_id=game.game_id,
+                status="waiting",
+                capacity=capacity,
+                game_state=game_state,
+            )
+            self._storage.save_room(room)
         return self.join_room(room_code, nickname)
 
     def join_room(self, room_code: str, nickname: str) -> JoinResult:
-        room = self._get_room_by_code(room_code)
-        game = self._get_game(room.game_id)
-        nickname = self._validate_nickname(nickname)
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            game = self._get_game(room.game_id)
+            nickname = self._validate_nickname(nickname)
 
-        if len(room.players) >= room.capacity:
-            raise PlatformError("room_full", "Room is full.", 409)
+            if len(room.players) >= room.capacity:
+                raise PlatformError("room_full", "Room is full.", 409)
 
-        session_token = generate_session_token()
-        player = Player(
-            player_id=uuid4().hex,
-            nickname=nickname,
-            session_token_hash=hash_token(session_token),
-        )
-        room.players.append(player)
-        result = game.module.on_player_join(room.game_state, player.to_game_dict())
-        room.game_state = result.get("state", room.game_state)
-        room.updated_at = _utc_now()
-        self._storage.save_room(room)
-        return JoinResult(room=room, player=player, session_token=session_token)
+            session_token = generate_session_token()
+            player = Player(
+                player_id=uuid4().hex,
+                nickname=nickname,
+                session_token_hash=hash_token(session_token),
+            )
+            room.players.append(player)
+            result = game.module.on_player_join(room.game_state, player.to_game_dict())
+            room.game_state = result.get("state", room.game_state)
+            room.updated_at = _utc_now()
+            self._storage.save_room(room)
+            return JoinResult(room=room, player=player, session_token=session_token)
 
     def get_room(self, room_code: str) -> Room:
-        return self._get_room_by_code(room_code)
+        with self._lock_for_room(room_code):
+            return self._get_room_by_code(room_code)
 
     def cleanup_expired_rooms(
         self,
@@ -124,21 +131,22 @@ class RoomManager:
         session_token: str,
         connection_id: str | None = None,
     ) -> JoinResult:
-        room = self._get_room_by_code(room_code)
-        player = self._find_player(room, player_id)
-        if player is None or not verify_token(session_token, player.session_token_hash):
-            raise PlatformError("invalid_session", "Invalid session token.", 401)
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            player = self._find_player(room, player_id)
+            if player is None or not verify_token(session_token, player.session_token_hash):
+                raise PlatformError("invalid_session", "Invalid session token.", 401)
 
-        player.connected = True
-        player.connection_id = connection_id
-        player.disconnected_at = None
-        player.last_seen_at = _utc_now()
-        game = self._get_game(room.game_id)
-        result = game.module.on_player_reconnect(room.game_state, player.to_game_dict())
-        room.game_state = result.get("state", room.game_state)
-        room.updated_at = _utc_now()
-        self._storage.save_room(room)
-        return JoinResult(room=room, player=player, session_token=session_token)
+            player.connected = True
+            player.connection_id = connection_id
+            player.disconnected_at = None
+            player.last_seen_at = _utc_now()
+            game = self._get_game(room.game_id)
+            result = game.module.on_player_reconnect(room.game_state, player.to_game_dict())
+            room.game_state = result.get("state", room.game_state)
+            room.updated_at = _utc_now()
+            self._storage.save_room(room)
+            return JoinResult(room=room, player=player, session_token=session_token)
 
     def mark_disconnected(
         self,
@@ -146,48 +154,51 @@ class RoomManager:
         player_id: str,
         connection_id: str | None = None,
     ) -> Player | None:
-        room = self._get_room_by_code(room_code)
-        player = self._require_player(room, player_id)
-        if connection_id is not None and player.connection_id != connection_id:
-            return None
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            player = self._require_player(room, player_id)
+            if connection_id is not None and player.connection_id != connection_id:
+                return None
 
-        disconnected_at = _utc_now()
-        player.connected = False
-        player.connection_id = None
-        player.disconnected_at = disconnected_at
-        player.last_seen_at = disconnected_at
-        game = self._get_game(room.game_id)
-        result = game.module.on_player_disconnect(room.game_state, player.to_game_dict())
-        room.game_state = result.get("state", room.game_state)
-        room.updated_at = disconnected_at
-        self._storage.save_room(room)
-        return player
+            disconnected_at = _utc_now()
+            player.connected = False
+            player.connection_id = None
+            player.disconnected_at = disconnected_at
+            player.last_seen_at = disconnected_at
+            game = self._get_game(room.game_id)
+            result = game.module.on_player_disconnect(room.game_state, player.to_game_dict())
+            room.game_state = result.get("state", room.game_state)
+            room.updated_at = disconnected_at
+            self._storage.save_room(room)
+            return player
 
     def handle_action(self, room_code: str, player_id: str, action: dict[str, Any]) -> dict[str, Any]:
-        room = self._get_room_by_code(room_code)
-        player = self._find_player(room, player_id)
-        if player is None:
-            raise PlatformError("player_not_found", "Player was not found.", 404)
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            player = self._find_player(room, player_id)
+            if player is None:
+                raise PlatformError("player_not_found", "Player was not found.", 404)
 
-        player.last_seen_at = _utc_now()
-        game = self._get_game(room.game_id)
-        result = game.module.handle_action(room.game_state, player.to_game_dict(), action)
-        room.game_state = result.get("state", room.game_state)
-        room.updated_at = _utc_now()
-        self._storage.save_room(room)
-        return result
+            player.last_seen_at = _utc_now()
+            game = self._get_game(room.game_id)
+            result = game.module.handle_action(room.game_state, player.to_game_dict(), action)
+            room.game_state = result.get("state", room.game_state)
+            room.updated_at = _utc_now()
+            self._storage.save_room(room)
+            return result
 
     def get_snapshot(self, room_code: str, player_id: str) -> dict[str, Any]:
-        room = self._get_room_by_code(room_code)
-        player = self._find_player(room, player_id)
-        if player is None:
-            raise PlatformError("player_not_found", "Player was not found.", 404)
+        with self._lock_for_room(room_code):
+            room = self._get_room_by_code(room_code)
+            player = self._find_player(room, player_id)
+            if player is None:
+                raise PlatformError("player_not_found", "Player was not found.", 404)
 
-        game = self._get_game(room.game_id)
-        return {
-            "room": room.to_public_dict(),
-            "game": game.module.get_state_snapshot(room.game_state, player.to_game_dict()),
-        }
+            game = self._get_game(room.game_id)
+            return {
+                "room": room.to_public_dict(),
+                "game": game.module.get_state_snapshot(room.game_state, player.to_game_dict()),
+            }
 
     def _get_game(self, game_id: Any) -> GameRegistration:
         if not isinstance(game_id, str) or not game_id.strip():
@@ -289,6 +300,14 @@ class RoomManager:
 
     def _find_player(self, room: Room, player_id: str) -> Player | None:
         return next((player for player in room.players if player.player_id == player_id), None)
+
+    def _lock_for_room(self, room_code: str) -> threading.RLock:
+        with self._room_locks_lock:
+            lock = self._room_locks.get(room_code)
+            if lock is None:
+                lock = threading.RLock()
+                self._room_locks[room_code] = lock
+            return lock
 
     def _is_valid_room_code(self, room_code: str) -> bool:
         return (

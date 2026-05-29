@@ -78,10 +78,10 @@ game_state
 - `ROOM_TTL_SECONDS`：房间按最后更新时间保留的默认时长。
 - `EMPTY_ROOM_TTL_SECONDS`：所有玩家断线后房间继续保留的时长。
 - `DISCONNECTED_PLAYER_TTL_SECONDS`：断线玩家允许恢复的时间窗口。
-- `ROOM_CLEANUP_ENABLED`：允许在测试或本地调试中关闭自动清理。
-- `ROOM_CLEANUP_INTERVAL_SECONDS`：自动清理循环的扫描间隔。
+- `ROOM_CLEANUP_ENABLED`：预留配置，默认关闭；当前没有后台调度器自动执行清理。
+- `ROOM_CLEANUP_INTERVAL_SECONDS`：预留配置，当前没有后台调度器读取该间隔。
 
-实现优先提供可确定调用的 `cleanup_expired_rooms(now=...)` 方法并直接测试。后台清理循环只有在不复杂化应用关闭和测试的前提下才加入；如果加入，也只调用同一个确定性的清理方法。
+实现优先提供可确定调用的 `cleanup_expired_rooms(now=...)` 方法并直接测试。后台清理循环暂不加入；后续如果加入，也只调用同一个确定性的清理方法。
 
 ## 重启恢复语义
 

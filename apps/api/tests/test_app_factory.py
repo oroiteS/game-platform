@@ -31,3 +31,10 @@ def test_create_app_uses_sqlite_db_path_config(tmp_path):
 
     assert response.status_code == 201
     assert db_path.exists()
+
+
+def test_create_app_defaults_room_cleanup_disabled_without_scheduler(tmp_path):
+    app = create_app({"SQLITE_DB_PATH": str(tmp_path / "app.sqlite3")})
+
+    # No background scheduler currently reads this flag, so automatic cleanup stays reserved.
+    assert app.config["ROOM_CLEANUP_ENABLED"] is False

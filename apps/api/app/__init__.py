@@ -18,7 +18,7 @@ def create_app(
     app = Flask(__name__)
     app.config.from_mapping(
         SQLITE_DB_PATH=Path(__file__).resolve().parents[1] / "var" / "game-platform.sqlite3",
-        ROOM_CLEANUP_ENABLED=True,
+        ROOM_CLEANUP_ENABLED=False,
         ROOM_CLEANUP_INTERVAL_SECONDS=300,
         ROOM_TTL_SECONDS=60 * 60 * 12,
         EMPTY_ROOM_TTL_SECONDS=60 * 30,
