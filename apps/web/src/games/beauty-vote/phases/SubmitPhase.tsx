@@ -24,7 +24,7 @@ type Props = {
 // ---------------------------------------------------------------------------
 
 export function SubmitPhase({ state, playerId, onAction }: Props) {
-  const isSubmitted = state.readyPlayerIds.includes(playerId);
+  const isSubmitted = state.mySubmission !== null;
 
   // Rule checks
   const hasRule5 = state.activeRules.target_value === 5;
@@ -58,19 +58,16 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
     if (hasRule9) {
       payload.betray_target = betrayTarget;
     }
-    onAction({ type: "submit", payload });
+    onAction({ type: "submit_number", payload });
   };
 
-  const submittedCount = state.readyPlayerIds.length;
-  const totalAlive = state.players.filter((p) => p.alive).length;
-  const currentT =
-    state.currentT !== null ? state.currentT : state.lastT !== null ? state.lastT : 0;
+  const SUBMIT_TIMEOUT_SECONDS = 90;
 
   return (
     <section className="game-surface" aria-labelledby="bv-submit-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">颜值投票</p>
+          <p className="eyebrow">美人投票</p>
           <h2 id="bv-submit-title">
             第 {state.round} 回合 — 提交阶段
           </h2>
@@ -99,7 +96,7 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
             className="state-text"
             style={{ textAlign: "center", fontSize: "0.85rem" }}
           >
-            {submittedCount}/{totalAlive} 人已提交
+            请等待所有存活玩家提交
           </p>
         </Panel>
       ) : (
@@ -177,7 +174,7 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
                 onChange={(e) => setUseLeverage(e.target.checked)}
                 style={{ width: 18, height: 18, accentColor: "var(--color-primary)" }}
               />
-              使用杠杆（规则6：数字超过50时得分翻倍，但失败扣分也翻倍）
+              使用杠杆（获胜+2 / 失败-1）
             </label>
           )}
 
@@ -215,7 +212,7 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
       </div>
 
       {/* Timer */}
-      <Timer seconds={currentT} />
+      <Timer seconds={SUBMIT_TIMEOUT_SECONDS} />
     </section>
   );
 }

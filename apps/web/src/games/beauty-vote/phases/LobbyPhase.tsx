@@ -41,7 +41,7 @@ export function LobbyPhase({ state, room, playerId, onAction }: Props) {
     <section className="game-surface" aria-labelledby="bv-lobby-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">颜值投票</p>
+          <p className="eyebrow">美人投票</p>
           <h2 id="bv-lobby-title">准备阶段</h2>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
