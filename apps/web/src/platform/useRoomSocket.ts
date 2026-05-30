@@ -30,7 +30,8 @@ function roomSocketUrl(roomCode: string, session: RoomSession): string {
     playerId: session.playerId,
     sessionToken: session.sessionToken,
   });
-  return `${protocol}//${window.location.host}/ws/rooms/${encodeURIComponent(
+  const base = import.meta.env.BASE_URL;
+  return `${protocol}//${window.location.host}${base}ws/rooms/${encodeURIComponent(
     roomCode,
   )}?${query.toString()}`;
 }

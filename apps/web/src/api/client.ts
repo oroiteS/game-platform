@@ -37,6 +37,9 @@ type ApiErrorBody = {
   };
 };
 
+const BASE = import.meta.env.BASE_URL;
+function api(p: string) { return `${BASE}api${p}`; }
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -61,13 +64,13 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getGames(): Promise<GameSummary[]> {
-  const payload = await requestJson<{ games: GameSummary[] }>("/api/games");
+  const payload = await requestJson<{ games: GameSummary[] }>(api("/games"));
   return payload.games;
 }
 
 export async function getGame(gameId: string): Promise<GameDetail> {
   const payload = await requestJson<{ game: GameDetail }>(
-    `/api/games/${encodeURIComponent(gameId)}`,
+    api(`/games/${encodeURIComponent(gameId)}`),
   );
   return payload.game;
 }
@@ -77,14 +80,14 @@ export async function createRoom(
   nickname: string,
   capacity: number,
 ): Promise<JoinResponse> {
-  return requestJson<JoinResponse>("/api/rooms", {
+  return requestJson<JoinResponse>(api("/rooms"), {
     method: "POST",
     body: JSON.stringify({ gameId, nickname, capacity }),
   });
 }
 
 export async function joinRoom(roomCode: string, nickname: string): Promise<JoinResponse> {
-  return requestJson<JoinResponse>(`/api/rooms/${encodeURIComponent(roomCode)}/join`, {
+  return requestJson<JoinResponse>(api(`/rooms/${encodeURIComponent(roomCode)}/join`), {
     method: "POST",
     body: JSON.stringify({ nickname }),
   });
@@ -92,7 +95,7 @@ export async function joinRoom(roomCode: string, nickname: string): Promise<Join
 
 export async function getRoom(roomCode: string): Promise<RoomSummary> {
   const payload = await requestJson<{ room: RoomSummary }>(
-    `/api/rooms/${encodeURIComponent(roomCode)}`,
+    api(`/rooms/${encodeURIComponent(roomCode)}`),
   );
   return payload.room;
 }
