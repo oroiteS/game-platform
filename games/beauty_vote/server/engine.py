@@ -173,6 +173,19 @@ def _handle_submission(state, pid, payload):
     return game_result("accepted", state)
 
 
+def _track_eliminations(state, eliminated_numbers):
+    """Update elimination tracking after a round. Call ONCE per round."""
+    if eliminated_numbers:
+        state["total_eliminations"] += len(eliminated_numbers)
+        state["consecutive_no_elimination"] = 0
+        valid_nums = [n for n in eliminated_numbers if n is not None]
+        if valid_nums and 7 in state["active_rules"]["independent"]:
+            state["inherited_number"] = round(statistics.mean(valid_nums))
+    else:
+        state["consecutive_no_elimination"] += 1
+        state["inherited_number"] = None  # always clear when no eliminations
+
+
 def _end_round(state):
     submissions = dict(state["_submissions"])
     state["_submissions"] = {}
@@ -254,16 +267,7 @@ def _end_round(state):
                 )
 
     # Update elimination tracking
-    if eliminated_this_round:
-        state["total_eliminations"] += len(eliminated_this_round)
-        state["consecutive_no_elimination"] = 0
-        valid_nums = [n for n in eliminated_numbers if n is not None]
-        if valid_nums and 7 in state["active_rules"]["independent"]:
-            state["inherited_number"] = round(statistics.mean(valid_nums))
-    else:
-        state["consecutive_no_elimination"] += 1
-        if 7 not in state["active_rules"]["independent"]:
-            state["inherited_number"] = None
+    _track_eliminations(state, eliminated_numbers)
 
     # Forced unlock: 3 consecutive no-elimination rounds
     if (state["consecutive_no_elimination"] >= CONSECUTIVE_NO_ELIMINATION_LIMIT
@@ -296,8 +300,6 @@ def _end_round(state):
 
 def _all_same_settlement(state, submissions):
     """All players chose same number: no winner, all -2."""
-    eliminations_before = state["total_eliminations"]
-    eliminated_this_round = []
     eliminated_numbers = []
     for pid in submissions:
         if pid in state["players"]:
@@ -305,20 +307,11 @@ def _all_same_settlement(state, submissions):
             if state["players"][pid]["score"] <= 0:
                 state["players"][pid]["alive"] = False
                 state["total_eliminations"] += 1
-                eliminated_this_round.append(pid)
                 eliminated_numbers.append(
                     submissions[pid]["number"] if pid in submissions else None
                 )
     # Update elimination tracking
-    if state["total_eliminations"] > eliminations_before:
-        state["consecutive_no_elimination"] = 0
-        valid_nums = [n for n in eliminated_numbers if n is not None]
-        if valid_nums and 7 in state["active_rules"]["independent"]:
-            state["inherited_number"] = round(statistics.mean(valid_nums))
-    else:
-        state["consecutive_no_elimination"] += 1
-        if 7 not in state["active_rules"]["independent"]:
-            state["inherited_number"] = None
+    _track_eliminations(state, eliminated_numbers)
     state["winner_ids"] = []
     state["furthest_ids"] = []
     state["calculation"] = {
