@@ -37,10 +37,17 @@ export function RevealPhase({ state, playerId, onAction }: Props) {
 
   const playerStatus = useMemo(() => {
     if (isAllSame) return { text: "全体相同（扣2分）", tone: "danger" as const };
-    if (isWinner) return { text: "获胜（不扣分）", tone: "success" as const };
+    if (isWinner) {
+      const usedLeverage = state.mySubmission?.use_leverage;
+      const gotInherited = state.inheritedNumber != null && state.mySubmission?.number === state.inheritedNumber;
+      if (usedLeverage || gotInherited) {
+        return { text: "获胜（+2分）", tone: "success" as const };
+      }
+      return { text: "获胜（不扣分）", tone: "success" as const };
+    }
     if (isFurthest) return { text: "最远（扣2分）", tone: "danger" as const };
     return { text: "扣1分", tone: "warning" as const };
-  }, [isAllSame, isWinner, isFurthest]);
+  }, [isAllSame, isWinner, isFurthest, state.mySubmission, state.inheritedNumber]);
 
   const phaseBadge = useMemo(() => {
     if (isAllSame) return { text: "全体相同", tone: "danger" as const };

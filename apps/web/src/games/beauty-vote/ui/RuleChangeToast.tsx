@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,7 +52,7 @@ export function RuleChangeToast({ log, currentRound }: Props) {
 
   if (!visible) return null;
 
-  return (
+  return createPortal(
     <div
       role="status"
       aria-live="polite"
@@ -77,6 +78,7 @@ export function RuleChangeToast({ log, currentRound }: Props) {
         <span>📜</span>
         <span>{message}</span>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

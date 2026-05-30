@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { RuleInfo } from "../types";
 
 type Props = {
@@ -50,47 +51,49 @@ export function RuleBadge({ rule }: Props) {
         R{rule.id} {rule.name}
       </button>
 
-      {open && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) onClose();
-          }}
-        >
+      {open &&
+        createPortal(
           <div
-            className="modal-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={rule.name}
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) onClose();
+            }}
           >
-            <section className="game-detail-modal">
-              <div className="modal-heading">
-                <div>
-                  <p className="eyebrow">
-                    规则 {rule.id}
-                  </p>
-                  <h2>{rule.name}</h2>
+            <div
+              className="modal-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={rule.name}
+            >
+              <section className="game-detail-modal">
+                <div className="modal-heading">
+                  <div>
+                    <p className="eyebrow">
+                      规则 {rule.id}
+                    </p>
+                    <h2>{rule.name}</h2>
+                  </div>
+                  <button
+                    ref={closeRef}
+                    type="button"
+                    className="ui-link-button"
+                    onClick={onClose}
+                  >
+                    关闭
+                  </button>
                 </div>
-                <button
-                  ref={closeRef}
-                  type="button"
-                  className="ui-link-button"
-                  onClick={onClose}
-                >
-                  关闭
-                </button>
-              </div>
 
-              <div className="game-detail-body">
-                <div className="rules-text">
-                  <p>{rule.description}</p>
+                <div className="game-detail-body">
+                  <div className="rules-text">
+                    <p>{rule.description}</p>
+                  </div>
                 </div>
-              </div>
-            </section>
-          </div>
-        </div>
-      )}
+              </section>
+            </div>
+          </div>,
+          document.body,
+        )}
     </span>
   );
 }

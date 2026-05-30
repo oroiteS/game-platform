@@ -22,7 +22,7 @@ def calculate_T(state, submissions):
     elif target_rule == 8:
         T1 = round(0.8 * mean_val, 1)
         T2 = round(1.2 * mean_val, 1)
-        return T1, T2, "rule8", "规则8：双重标准", f"T1 = 0.8 x {mean_val:.1f} = {T1}, T2 = 1.2 x {mean_val:.1f} = {T2}"
+        return T1, T2, "rule8", "规则8：双重标准", f"D = (数字−{T1})² + (数字−{T2})²，D越小越好 | T₁=0.8×{mean_val:.1f}={T1}, T₂=1.2×{mean_val:.1f}={T2}"
 
     elif target_rule == 10:
         k = random.choice([0.6, 0.8, 1.0])
