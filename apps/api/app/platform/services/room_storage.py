@@ -32,6 +32,9 @@ class RoomStorage(Protocol):
     def delete_room(self, room_code: str) -> None:
         ...
 
+    def delete_all_rooms(self) -> None:
+        ...
+
 
 class InMemoryRoomStorage:
     loads_saved_connection_state = False
@@ -53,6 +56,9 @@ class InMemoryRoomStorage:
 
     def delete_room(self, room_code: str) -> None:
         self._rooms.pop(room_code, None)
+
+    def delete_all_rooms(self) -> None:
+        self._rooms.clear()
 
 
 def _datetime_to_text(value: datetime | None) -> str | None:
@@ -203,6 +209,10 @@ class SQLiteRoomStorage:
     def delete_room(self, room_code: str) -> None:
         with self._connect() as connection:
             connection.execute("delete from rooms where room_code = ?", (room_code,))
+
+    def delete_all_rooms(self) -> None:
+        with self._connect() as connection:
+            connection.execute("delete from rooms")
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)
