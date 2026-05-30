@@ -3,6 +3,8 @@ import { Panel } from "../../components/ui/Panel";
 import type { RoomSummary } from "../../api/client";
 import type { BeautyVoteState } from "./types";
 import { LobbyPhase } from "./phases/LobbyPhase";
+import { SubmitPhase } from "./phases/SubmitPhase";
+import { RevealPhase } from "./phases/RevealPhase";
 import { GameOverPhase } from "./phases/GameOverPhase";
 
 // ---------------------------------------------------------------------------
@@ -71,9 +73,11 @@ export function BeautyVoteGame({ room, gameState, playerId, onAction }: Props) {
       );
     case "reveal":
       return (
-        <Panel>
-          <p>揭示阶段（待实现）</p>
-        </Panel>
+        <RevealPhase
+          state={state}
+          playerId={playerId}
+          onAction={onAction}
+        />
       );
     case "ended":
       return <GameOverPhase state={state} playerId={playerId} />;
