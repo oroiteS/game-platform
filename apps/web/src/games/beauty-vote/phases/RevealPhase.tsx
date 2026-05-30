@@ -24,6 +24,7 @@ type Props = {
 // ---------------------------------------------------------------------------
 
 export function RevealPhase({ state, playerId, onAction }: Props) {
+  const isAllSame = state.calculation?.method === "all_same";
   const isWinner = state.winnerIds.includes(playerId);
   const isFurthest = state.furthestIds.includes(playerId);
 
@@ -35,16 +36,18 @@ export function RevealPhase({ state, playerId, onAction }: Props) {
   }, [state.winnerIds, state.players]);
 
   const playerStatus = useMemo(() => {
+    if (isAllSame) return { text: "全体相同（扣2分）", tone: "danger" as const };
     if (isWinner) return { text: "获胜（不扣分）", tone: "success" as const };
     if (isFurthest) return { text: "最远（扣2分）", tone: "danger" as const };
     return { text: "扣1分", tone: "warning" as const };
-  }, [isWinner, isFurthest]);
+  }, [isAllSame, isWinner, isFurthest]);
 
   const phaseBadge = useMemo(() => {
+    if (isAllSame) return { text: "全体相同", tone: "danger" as const };
     if (isWinner) return { text: "获胜", tone: "success" as const };
     if (isFurthest) return { text: "最远", tone: "danger" as const };
     return { text: "参与", tone: "neutral" as const };
-  }, [isWinner, isFurthest]);
+  }, [isAllSame, isWinner, isFurthest]);
 
   return (
     <section className="game-surface" aria-labelledby="bv-reveal-title">
