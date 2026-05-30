@@ -86,7 +86,7 @@ def apply_round_20(state):
     for pid in state["players"]:
         p = state["players"][pid]
         if p.get("alive", True):
-            p["score"] = max(1, p["score"] // 2)
+            p["score"] = p["score"] // 2
     state["active_rules"] = empty_active_rules()
     state["rule_pool"] = []
     state["has_hidden_rule"] = True

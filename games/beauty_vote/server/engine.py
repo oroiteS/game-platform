@@ -46,7 +46,7 @@ def _fresh_state(capacity=0):
         "winner_ids": [],
         "furthest_ids": [],
         "rule_log": [],
-        "round_log": None,
+        "round_log": [],
         "calculation": None,
         "has_hidden_rule": False,
         "_last_unlock_at_eliminations": 0,
@@ -126,6 +126,12 @@ def handle_action(state, player, action):
             return game_result("rejected", state, "already_submitted")
         return _handle_submission(state, pid, action.get("payload", {}))
 
+    if action_type == "next_round":
+        if phase != "reveal":
+            return game_result("rejected", state, "wrong_phase")
+        _transition_to_next_round(state)
+        return game_result("accepted", state)
+
     return game_result("rejected", state, "unknown_action")
 
 
@@ -173,15 +179,8 @@ def _end_round(state):
     state["phase"] = "reveal"
 
     round_num = state["round"]
-    state["_all_time_submissions"][round_num] = {
-        pid: sub["number"] for pid, sub in submissions.items()
-    }
 
-    for pid, sub in submissions.items():
-        if pid in state["players"]:
-            state["players"][pid]["last_number"] = sub["number"]
-
-    # Apply special event: number storm
+    # Apply special event: number storm (modifies submissions in place)
     special_event = state.get("special_event")
     if special_event and special_event["type"] == "number_storm":
         submissions = apply_number_storm(submissions)
@@ -190,10 +189,18 @@ def _end_round(state):
     if special_event and special_event["type"] == "score_reset":
         apply_score_reset(state)
 
+    # Save storm-modified numbers for history and last_number
+    state["_all_time_submissions"][round_num] = {
+        pid: sub["number"] for pid, sub in submissions.items()
+    }
+
+    for pid, sub in submissions.items():
+        if pid in state["players"]:
+            state["players"][pid]["last_number"] = sub["number"]
+
     # Check all-same
     if find_extreme_duplicates(submissions):
         _all_same_settlement(state, submissions)
-        _transition_to_next_round(state)
         return game_result("accepted", state)
 
     # Calculate T
@@ -275,27 +282,43 @@ def _end_round(state):
 
     state["last_T"] = T
 
-    state["round_log"] = {
+    state["round_log"].append({
         "round": state["round"],
         "T": T,
         "winners": winners,
         "furthest": furthest,
         "eliminated": eliminated_this_round,
         "deltas": deltas,
-    }
+    })
 
-    _transition_to_next_round(state)
     return game_result("accepted", state)
 
 
 def _all_same_settlement(state, submissions):
     """All players chose same number: no winner, all -2."""
+    eliminations_before = state["total_eliminations"]
+    eliminated_this_round = []
+    eliminated_numbers = []
     for pid in submissions:
         if pid in state["players"]:
             state["players"][pid]["score"] -= 2
             if state["players"][pid]["score"] <= 0:
                 state["players"][pid]["alive"] = False
                 state["total_eliminations"] += 1
+                eliminated_this_round.append(pid)
+                eliminated_numbers.append(
+                    submissions[pid]["number"] if pid in submissions else None
+                )
+    # Update elimination tracking
+    if state["total_eliminations"] > eliminations_before:
+        state["consecutive_no_elimination"] = 0
+        valid_nums = [n for n in eliminated_numbers if n is not None]
+        if valid_nums and 7 in state["active_rules"]["independent"]:
+            state["inherited_number"] = round(statistics.mean(valid_nums))
+    else:
+        state["consecutive_no_elimination"] += 1
+        if 7 not in state["active_rules"]["independent"]:
+            state["inherited_number"] = None
     state["winner_ids"] = []
     state["furthest_ids"] = []
     state["calculation"] = {
@@ -315,10 +338,10 @@ def _transition_to_next_round(state):
     # Round 20 hidden rule check
     if state["round"] >= MAX_ROUNDS and not state.get("has_hidden_rule"):
         apply_round_20(state)
-        state["round_log"] = {
+        state["round_log"].append({
             "round": state["round"],
             "message": "隐藏规则已激活",
-        }
+        })
 
     state["round"] += 1
     state["phase"] = "submit"
@@ -344,13 +367,15 @@ def get_state_snapshot(state, viewer):
         pdata = state["players"].get(pid)
         if not pdata:
             continue
-        players.append({
+        entry = {
             "playerId": pid,
             "nickname": pdata["nickname"],
             "score": pdata["score"],
             "alive": pdata.get("alive", True),
-            "lastNumber": pdata.get("last_number"),
-        })
+        }
+        if state["phase"] == "ended":
+            entry["lastNumber"] = pdata.get("last_number")
+        players.append(entry)
 
     my_submission = None
     if viewer_id in state.get("_submissions", {}):
@@ -362,7 +387,7 @@ def get_state_snapshot(state, viewer):
 
     rules_display = None
     if state.get("has_hidden_rule"):
-        rules_display = []
+        rules_display = [{"id": 0, "name": "隐藏规则", "description": ""}]
     else:
         rules_display = rule_names_for_display(state)
 
