@@ -33,8 +33,46 @@ def test_create_app_uses_sqlite_db_path_config(tmp_path):
     assert db_path.exists()
 
 
-def test_create_app_defaults_room_cleanup_disabled_without_scheduler(tmp_path):
+def test_create_app_cleanup_disabled_by_default(tmp_path):
     app = create_app({"SQLITE_DB_PATH": str(tmp_path / "app.sqlite3")})
-
-    # No background scheduler currently reads this flag, so automatic cleanup stays reserved.
     assert app.config["ROOM_CLEANUP_ENABLED"] is False
+
+
+def test_create_app_starts_cleanup_scheduler_when_enabled(tmp_path):
+    import time
+
+    db_path = tmp_path / "app.sqlite3"
+    app = create_app({
+        "SQLITE_DB_PATH": str(db_path),
+        "ROOM_CLEANUP_ENABLED": True,
+        "ROOM_CLEANUP_INTERVAL_SECONDS": 1,
+        "WAITING_ROOM_TTL_SECONDS": 1,
+        "PLAYING_ROOM_TTL_SECONDS": 3600,
+    })
+    manager = app.config["ROOM_MANAGER"]
+
+    # Create a room and age it so cleanup removes it
+    result = manager.create_room("lobby-demo", "Ada", 3)
+    result.room.updated_at = result.room.updated_at.replace(
+        year=2020, month=1, day=1
+    )
+    manager._storage.save_room(result.room)
+
+    # Wait for scheduler to run (interval=1s + some buffer)
+    time.sleep(2)
+
+    assert manager._storage.get_room(result.room.room_code) is None
+
+
+def test_create_app_deletes_all_rooms_on_startup(tmp_path):
+    db_path = tmp_path / "app.sqlite3"
+    # First app: create a room
+    app1 = create_app({"SQLITE_DB_PATH": str(db_path)})
+    manager1 = app1.config["ROOM_MANAGER"]
+    manager1.create_room("lobby-demo", "Ada", 3)
+    assert len(manager1._storage.list_room_codes()) == 1
+
+    # Second app with same DB: should have deleted the room on startup
+    app2 = create_app({"SQLITE_DB_PATH": str(db_path)})
+    manager2 = app2.config["ROOM_MANAGER"]
+    assert len(manager2._storage.list_room_codes()) == 0
