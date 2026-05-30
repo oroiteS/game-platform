@@ -69,7 +69,7 @@ RULE_META = {
         "id": 8,
         "name": "双重标准",
         "domain": DOMAIN_TARGET_VALUE,
-        "description": "产生两个目标值T1=0.8×均值、T2=1.2×均值，用D值判定。",
+        "description": "产生两个目标值T₁=0.8×均值、T₂=1.2×均值。D = (数字-T₁)² + (数字-T₂)²，D值越小越好，以此判定获胜与最远。",
     },
     9: {
         "id": 9,
