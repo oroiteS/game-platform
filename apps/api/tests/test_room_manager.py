@@ -228,3 +228,25 @@ def test_get_game_info_includes_rules():
 
     assert info["id"] == "lobby-demo"
     assert info["rules"]
+
+
+def test_handle_action_updates_room_status_to_playing():
+    manager = RoomManager()
+    result = manager.create_room("fake-person", "Ada", 3)
+    room_code = result.room.room_code
+    host_player_id = result.player.player_id
+
+    bob = manager.join_room(room_code, "Bob")
+    cy = manager.join_room(room_code, "Cy")
+
+    manager.handle_action(room_code, host_player_id, {"type": "toggle_ready"})
+    manager.handle_action(room_code, bob.player.player_id, {"type": "toggle_ready"})
+    manager.handle_action(room_code, cy.player.player_id, {"type": "toggle_ready"})
+
+    action_result = manager.handle_action(
+        room_code, host_player_id, {"type": "become_host"}
+    )
+    assert action_result["status"] == "accepted"
+
+    room = manager.get_room(room_code)
+    assert room.status == "playing"

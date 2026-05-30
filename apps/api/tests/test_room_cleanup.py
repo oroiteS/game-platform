@@ -97,3 +97,77 @@ def test_cleanup_uses_last_seen_when_disconnected_at_is_missing(tmp_path):
 
     assert removed == [created.room.room_code]
     assert storage.get_room(created.room.room_code) is None
+
+
+def test_cleanup_removes_waiting_room_past_ttl(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage, manager = sqlite_manager(db_path)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    created.room.updated_at = now - timedelta(seconds=1801)
+    storage.save_room(created.room)
+
+    removed = manager.cleanup_expired_rooms(
+        now=now,
+        room_ttl_seconds=7200,
+        waiting_room_ttl_seconds=1800,
+    )
+
+    assert removed == [created.room.room_code]
+    assert storage.get_room(created.room.room_code) is None
+
+
+def test_cleanup_keeps_waiting_room_before_ttl(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage, manager = sqlite_manager(db_path)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    created.room.updated_at = now - timedelta(seconds=1799)
+    storage.save_room(created.room)
+
+    removed = manager.cleanup_expired_rooms(
+        now=now,
+        room_ttl_seconds=7200,
+        waiting_room_ttl_seconds=1800,
+    )
+
+    assert removed == []
+    assert storage.get_room(created.room.room_code) is not None
+
+
+def test_cleanup_removes_playing_room_past_ttl(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage, manager = sqlite_manager(db_path)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    created.room.status = "playing"
+    created.room.updated_at = now - timedelta(seconds=3601)
+    storage.save_room(created.room)
+
+    removed = manager.cleanup_expired_rooms(
+        now=now,
+        room_ttl_seconds=7200,
+        playing_room_ttl_seconds=3600,
+    )
+
+    assert removed == [created.room.room_code]
+    assert storage.get_room(created.room.room_code) is None
+
+
+def test_cleanup_keeps_playing_room_before_ttl(tmp_path):
+    db_path = tmp_path / "rooms.sqlite3"
+    storage, manager = sqlite_manager(db_path)
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
+    created = manager.create_room("lobby-demo", "Ada", 3)
+    created.room.status = "playing"
+    created.room.updated_at = now - timedelta(seconds=3599)
+    storage.save_room(created.room)
+
+    removed = manager.cleanup_expired_rooms(
+        now=now,
+        room_ttl_seconds=7200,
+        playing_room_ttl_seconds=3600,
+    )
+
+    assert removed == []
+    assert storage.get_room(created.room.room_code) is not None
