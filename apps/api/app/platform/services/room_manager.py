@@ -134,6 +134,8 @@ class RoomManager:
                 ):
                     self._storage.delete_room(current.room_code)
                     removed_room_codes.append(current.room_code)
+                    with self._room_locks_lock:
+                        self._room_locks.pop(current.room_code, None)
 
         return removed_room_codes
 

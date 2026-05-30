@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 def _start_cleanup_scheduler(
     room_manager: RoomManager,
     interval_seconds: int,
+    room_ttl: int,
+    empty_ttl: int,
     waiting_ttl: int,
     playing_ttl: int,
 ) -> None:
@@ -27,6 +29,8 @@ def _start_cleanup_scheduler(
             time.sleep(interval_seconds)
             try:
                 removed = room_manager.cleanup_expired_rooms(
+                    room_ttl_seconds=room_ttl,
+                    empty_room_ttl_seconds=empty_ttl,
                     waiting_room_ttl_seconds=waiting_ttl,
                     playing_room_ttl_seconds=playing_ttl,
                 )
@@ -82,6 +86,8 @@ def create_app(
         _start_cleanup_scheduler(
             room_manager,
             app.config["ROOM_CLEANUP_INTERVAL_SECONDS"],
+            app.config["ROOM_TTL_SECONDS"],
+            app.config["EMPTY_ROOM_TTL_SECONDS"],
             app.config["WAITING_ROOM_TTL_SECONDS"],
             app.config["PLAYING_ROOM_TTL_SECONDS"],
         )
