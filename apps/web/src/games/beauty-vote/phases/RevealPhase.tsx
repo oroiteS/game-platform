@@ -4,7 +4,7 @@ import { Button } from "../../../components/ui/Button";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { ScoreBoard } from "../ui/ScoreBoard";
 import { RulePanel } from "../ui/RulePanel";
-import { CalculationBox } from "../ui/CalculationBox";
+import { SettlementPanel } from "../ui/SettlementPanel";
 import { EventBanner } from "../ui/EventBanner";
 import { RuleChangeToast } from "../ui/RuleChangeToast";
 import type { BeautyVoteState } from "../types";
@@ -27,27 +27,6 @@ export function RevealPhase({ state, playerId, onAction }: Props) {
   const isAllSame = state.calculation?.method === "all_same";
   const isWinner = state.winnerIds.includes(playerId);
   const isFurthest = state.furthestIds.includes(playerId);
-
-  const winnerNames = useMemo(() => {
-    const names = state.winnerIds
-      .map((id) => state.players.find((p) => p.playerId === id)?.nickname)
-      .filter((n): n is string => n != null);
-    return names;
-  }, [state.winnerIds, state.players]);
-
-  const playerStatus = useMemo(() => {
-    if (isAllSame) return { text: "全体相同（扣2分）", tone: "danger" as const };
-    if (isWinner) {
-      const usedLeverage = state.mySubmission?.use_leverage;
-      const gotInherited = state.inheritedNumber != null && state.mySubmission?.number === state.inheritedNumber;
-      if (usedLeverage || gotInherited) {
-        return { text: "获胜（+2分）", tone: "success" as const };
-      }
-      return { text: "获胜（不扣分）", tone: "success" as const };
-    }
-    if (isFurthest) return { text: "最远（扣2分）", tone: "danger" as const };
-    return { text: "扣1分", tone: "warning" as const };
-  }, [isAllSame, isWinner, isFurthest, state.mySubmission, state.inheritedNumber]);
 
   const phaseBadge = useMemo(() => {
     if (isAllSame) return { text: "全体相同", tone: "danger" as const };
@@ -74,30 +53,7 @@ export function RevealPhase({ state, playerId, onAction }: Props) {
 
       {/* Settlement panel */}
       <Panel>
-        {/* Calculation display */}
-        {state.calculation && <CalculationBox calc={state.calculation} />}
-
-        {/* Key facts */}
-        <dl className="room-facts">
-          <div className="fact-row">
-            <dt>T 值</dt>
-            <dd>{state.currentT != null ? state.currentT : "—"}</dd>
-          </div>
-          <div className="fact-row">
-            <dt>获胜者</dt>
-            <dd>
-              {winnerNames.length > 0 ? winnerNames.join("、") : "无"}
-            </dd>
-          </div>
-          <div className="fact-row">
-            <dt>你的状态</dt>
-            <dd>
-              <StatusBadge tone={playerStatus.tone}>
-                {playerStatus.text}
-              </StatusBadge>
-            </dd>
-          </div>
-        </dl>
+        <SettlementPanel state={state} playerId={playerId} />
       </Panel>
 
       {/* ScoreBoard with winners highlighted */}
