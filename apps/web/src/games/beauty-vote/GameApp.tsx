@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Panel } from "../../components/ui/Panel";
 import type { RoomSummary } from "../../api/client";
 import type { BeautyVoteState } from "./types";
+import { LobbyPhase } from "./phases/LobbyPhase";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,9 +55,12 @@ export function BeautyVoteGame({ room, gameState, playerId, onAction }: Props) {
   switch (state.phase) {
     case "lobby":
       return (
-        <Panel>
-          <p>等待游戏开始...</p>
-        </Panel>
+        <LobbyPhase
+          state={state}
+          room={room}
+          playerId={playerId}
+          onAction={onAction}
+        />
       );
     case "submit":
       return (

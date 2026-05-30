@@ -387,6 +387,7 @@ def get_state_snapshot(state, viewer):
         "phase": state["phase"],
         "round": state["round"],
         "players": players,
+        "readyPlayerIds": state.get("readyPlayerIds", []),
         "capacity": state["capacity"],
         "currentT": state.get("current_T"),
         "lastT": state.get("last_T"),

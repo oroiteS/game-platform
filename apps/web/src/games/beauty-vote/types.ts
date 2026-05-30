@@ -42,6 +42,7 @@ export interface BeautyVoteState {
   phase: GamePhase;
   round: number;
   players: PlayerState[];
+  readyPlayerIds: string[];
   capacity: number;
   currentT: number | null;
   lastT: number | null;
