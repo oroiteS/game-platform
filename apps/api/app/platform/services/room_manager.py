@@ -380,7 +380,7 @@ class RoomManager:
         if room.status == "waiting":
             if now - room.updated_at >= timedelta(seconds=waiting_room_ttl_seconds):
                 return True
-        else:
+        elif room.status == "playing":
             if now - room.updated_at >= timedelta(seconds=playing_room_ttl_seconds):
                 return True
 
