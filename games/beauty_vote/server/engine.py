@@ -306,7 +306,6 @@ def _all_same_settlement(state, submissions):
             state["players"][pid]["score"] -= 2
             if state["players"][pid]["score"] <= 0:
                 state["players"][pid]["alive"] = False
-                state["total_eliminations"] += 1
                 eliminated_numbers.append(
                     submissions[pid]["number"] if pid in submissions else None
                 )
