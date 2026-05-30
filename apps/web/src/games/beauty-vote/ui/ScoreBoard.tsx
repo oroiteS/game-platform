@@ -44,6 +44,11 @@ export function ScoreBoard({ players, highlightIds = [] }: Props) {
         >
           <span>
             {i + 1}. {p.nickname}
+            {p.lastNumber != null && (
+              <span style={{ color: "var(--color-text-muted)", marginLeft: 8 }}>
+                [{p.lastNumber}]
+              </span>
+            )}
           </span>
           <span style={{ fontWeight: 600 }}>{p.score} 分</span>
         </div>

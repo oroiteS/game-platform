@@ -365,7 +365,7 @@ def get_state_snapshot(state, viewer):
             "score": pdata["score"],
             "alive": pdata.get("alive", True),
         }
-        if state["phase"] == "ended":
+        if state["phase"] in ("reveal", "ended"):
             entry["lastNumber"] = pdata.get("last_number")
         players.append(entry)
 
