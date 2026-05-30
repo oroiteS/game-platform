@@ -1,59 +1,41 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { RuleInfo } from "../types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type Props = {
   rule: RuleInfo;
 };
 
-// ---------------------------------------------------------------------------
-// RuleBadge — clickable rule tag with description popover
-// ---------------------------------------------------------------------------
-
 export function RuleBadge({ rule }: Props) {
   const [open, setOpen] = useState(false);
   const badgeRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  const toggle = useCallback(() => setOpen((v) => !v), []);
+  const onClose = useCallback(() => {
+    setOpen(false);
+    window.requestAnimationFrame(() => badgeRef.current?.focus());
+  }, []);
 
-  // Close on outside click
+  // Focus trap and Escape
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node) &&
-        badgeRef.current &&
-        !badgeRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open]);
+    window.addEventListener("keydown", handler);
+    window.requestAnimationFrame(() => closeRef.current?.focus());
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
 
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
       <button
         ref={badgeRef}
         type="button"
-        onClick={toggle}
-        aria-expanded={open}
+        onClick={() => setOpen(true)}
         style={{
           cursor: "pointer",
           border: "1px solid var(--color-border)",
@@ -67,30 +49,46 @@ export function RuleBadge({ rule }: Props) {
       >
         R{rule.id} {rule.name}
       </button>
+
       {open && (
         <div
-          ref={popoverRef}
-          role="tooltip"
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            marginTop: 4,
-            zIndex: 100,
-            background: "var(--color-surface-high)",
-            border: "1px solid var(--color-border)",
-            borderRadius: 8,
-            padding: "10px 14px",
-            maxWidth: 280,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-            fontSize: "0.9rem",
-            lineHeight: 1.5,
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            R{rule.id} {rule.name}
+          <div
+            className="modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={rule.name}
+          >
+            <section className="game-detail-modal">
+              <div className="modal-heading">
+                <div>
+                  <p className="eyebrow">
+                    规则 {rule.id}
+                  </p>
+                  <h2>{rule.name}</h2>
+                </div>
+                <button
+                  ref={closeRef}
+                  type="button"
+                  className="ui-link-button"
+                  onClick={onClose}
+                >
+                  关闭
+                </button>
+              </div>
+
+              <div className="game-detail-body">
+                <div className="rules-text">
+                  <p>{rule.description}</p>
+                </div>
+              </div>
+            </section>
           </div>
-          <div>{rule.description}</div>
         </div>
       )}
     </span>
