@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 
 type Props = {
   seconds: number;
+  totalSeconds?: number;
   onExpire?: () => void;
 };
 
@@ -13,9 +14,7 @@ type Props = {
 // Timer — 90-second countdown with progress bar
 // ---------------------------------------------------------------------------
 
-const TOTAL_SECONDS = 90;
-
-export function Timer({ seconds, onExpire }: Props) {
+export function Timer({ seconds, totalSeconds = 90, onExpire }: Props) {
   const expiredRef = useRef(false);
 
   // Notify parent when timer hits zero
@@ -32,7 +31,7 @@ export function Timer({ seconds, onExpire }: Props) {
 
   const isDanger = seconds <= 10 && seconds > 0;
   const isExpired = seconds <= 0;
-  const progress = Math.max(0, Math.min(1, seconds / TOTAL_SECONDS));
+  const progress = Math.max(0, Math.min(1, seconds / totalSeconds));
 
   const barColor = isExpired
     ? "var(--color-danger)"

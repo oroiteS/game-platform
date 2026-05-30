@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Panel } from "../../../components/ui/Panel";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
@@ -43,9 +43,11 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
   );
 
   // Set initial betray target to first alive other player
-  if (hasRule9 && betrayTarget === "" && aliveOthers.length > 0) {
-    setBetrayTarget(aliveOthers[0].playerId);
-  }
+  useEffect(() => {
+    if (hasRule9 && betrayTarget === "" && aliveOthers.length > 0) {
+      setBetrayTarget(aliveOthers[0].playerId);
+    }
+  }, [hasRule9, aliveOthers, betrayTarget]);
 
   const handleSubmit = () => {
     const payload: Record<string, unknown> = {
