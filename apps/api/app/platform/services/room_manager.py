@@ -22,6 +22,8 @@ MAX_NICKNAME_LENGTH = 24
 PLATFORM_ROOM_CAPACITY = 30
 DEFAULT_ROOM_TTL_SECONDS = 60 * 60 * 12
 DEFAULT_EMPTY_ROOM_TTL_SECONDS = 60 * 30
+DEFAULT_WAITING_ROOM_TTL_SECONDS = 60 * 30
+DEFAULT_PLAYING_ROOM_TTL_SECONDS = 60 * 60
 DEFAULT_PLAYER_ONLINE_TIMEOUT_SECONDS = 30
 
 
@@ -111,6 +113,8 @@ class RoomManager:
         now: datetime | None = None,
         room_ttl_seconds: int = DEFAULT_ROOM_TTL_SECONDS,
         empty_room_ttl_seconds: int = DEFAULT_EMPTY_ROOM_TTL_SECONDS,
+        waiting_room_ttl_seconds: int = DEFAULT_WAITING_ROOM_TTL_SECONDS,
+        playing_room_ttl_seconds: int = DEFAULT_PLAYING_ROOM_TTL_SECONDS,
     ) -> list[str]:
         cleanup_time = now if now is not None else _utc_now()
         removed_room_codes: list[str] = []
@@ -121,6 +125,8 @@ class RoomManager:
                 cleanup_time,
                 room_ttl_seconds=room_ttl_seconds,
                 empty_room_ttl_seconds=empty_room_ttl_seconds,
+                waiting_room_ttl_seconds=waiting_room_ttl_seconds,
+                playing_room_ttl_seconds=playing_room_ttl_seconds,
             ):
                 self._storage.delete_room(room.room_code)
                 removed_room_codes.append(room.room_code)
@@ -255,6 +261,14 @@ class RoomManager:
             game = self._get_game(room.game_id)
             result = game.module.handle_action(room.game_state, player.to_game_dict(), action)
             room.game_state = result.get("state", room.game_state)
+            if room.status == "waiting":
+                phase = (
+                    room.game_state.get("phase")
+                    if isinstance(room.game_state, dict)
+                    else None
+                )
+                if phase is not None and phase != "lobby":
+                    room.status = "playing"
             room.updated_at = _utc_now()
             self._storage.save_room(room)
             return result
@@ -357,12 +371,18 @@ class RoomManager:
         now: datetime,
         room_ttl_seconds: int,
         empty_room_ttl_seconds: int,
+        waiting_room_ttl_seconds: int = DEFAULT_WAITING_ROOM_TTL_SECONDS,
+        playing_room_ttl_seconds: int = DEFAULT_PLAYING_ROOM_TTL_SECONDS,
     ) -> bool:
         if room.expires_at is not None and room.expires_at <= now:
             return True
 
-        if now - room.updated_at >= timedelta(seconds=room_ttl_seconds):
-            return True
+        if room.status == "waiting":
+            if now - room.updated_at >= timedelta(seconds=waiting_room_ttl_seconds):
+                return True
+        else:
+            if now - room.updated_at >= timedelta(seconds=playing_room_ttl_seconds):
+                return True
 
         if room.players and all(not player.connected for player in room.players):
             last_disconnected_at = max(
@@ -371,6 +391,9 @@ class RoomManager:
             )
             if now - last_disconnected_at >= timedelta(seconds=empty_room_ttl_seconds):
                 return True
+
+        if now - room.updated_at >= timedelta(seconds=room_ttl_seconds):
+            return True
 
         return False
 
