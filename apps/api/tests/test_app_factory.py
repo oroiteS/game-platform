@@ -1,3 +1,5 @@
+import time
+
 from app import create_app
 from app.platform.services.room_manager import RoomManager
 
@@ -39,8 +41,6 @@ def test_create_app_cleanup_disabled_by_default(tmp_path):
 
 
 def test_create_app_starts_cleanup_scheduler_when_enabled(tmp_path):
-    import time
-
     db_path = tmp_path / "app.sqlite3"
     app = create_app({
         "SQLITE_DB_PATH": str(db_path),
@@ -51,15 +51,17 @@ def test_create_app_starts_cleanup_scheduler_when_enabled(tmp_path):
     })
     manager = app.config["ROOM_MANAGER"]
 
-    # Create a room and age it so cleanup removes it
     result = manager.create_room("lobby-demo", "Ada", 3)
     result.room.updated_at = result.room.updated_at.replace(
         year=2020, month=1, day=1
     )
     manager._storage.save_room(result.room)
 
-    # Wait for scheduler to run (interval=1s + some buffer)
-    time.sleep(2)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if manager._storage.get_room(result.room.room_code) is None:
+            break
+        time.sleep(0.1)
 
     assert manager._storage.get_room(result.room.room_code) is None
 
