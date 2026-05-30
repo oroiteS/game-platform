@@ -203,7 +203,7 @@ def _end_round(state):
         apply_score_reset(state)
 
     # Save storm-modified numbers for history and last_number
-    state["_all_time_submissions"][round_num] = {
+    state["_all_time_submissions"][str(round_num)] = {
         pid: sub["number"] for pid, sub in submissions.items()
     }
 
