@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// NumberInput — range slider + number input with forbidden/inherited hints
+// NumberInput — range slider + number input with forbidden hint
 // ---------------------------------------------------------------------------
 
 type Props = {
@@ -7,8 +7,8 @@ type Props = {
   onChange: (n: number) => void;
   min?: number;
   max?: number;
+  label?: string;
   forbiddenNumber?: number | null;
-  inheritedNumber?: number | null;
 };
 
 export function NumberInput({
@@ -16,8 +16,8 @@ export function NumberInput({
   onChange,
   min = 0,
   max = 100,
+  label = "你的数字",
   forbiddenNumber = null,
-  inheritedNumber = null,
 }: Props) {
   const isForbidden = forbiddenNumber !== null && value === forbiddenNumber;
 
@@ -39,7 +39,7 @@ export function NumberInput({
 
   return (
     <div className="text-field">
-      <label className="text-field__label">你的数字</label>
+      <label className="text-field__label">{label}</label>
 
       {/* Range slider */}
       <input
@@ -92,19 +92,6 @@ export function NumberInput({
           }}
         >
           禁区数字：{forbiddenNumber}（选择将被扣3分）
-        </p>
-      )}
-
-      {/* Inherited number hint */}
-      {inheritedNumber !== null && (
-        <p
-          className="text-field__help"
-          style={{
-            color: "var(--color-primary)",
-            fontWeight: 600,
-          }}
-        >
-          继承数字：{inheritedNumber}（获胜+2分，失败固定-1分）
         </p>
       )}
     </div>

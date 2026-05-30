@@ -98,7 +98,6 @@ def apply_round_20(state):
     state["current_T"] = 0
     state["last_T"] = 0
     state["forbidden_number"] = None
-    state["inherited_number"] = None
 
 
 def rule_names_for_display(state):

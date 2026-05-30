@@ -34,12 +34,12 @@ class TestInitialState:
         assert state["phase"] == "lobby"
         assert state["capacity"] == 4
         assert state["round"] == 0
-        assert len(state["rule_pool"]) == 10
+        assert len(state["rule_pool"]) == 9
         assert state["active_rules"] == {"independent": [], "target_value": None, "win_loss_alt": None}
 
     def test_all_rules_in_initial_pool(self):
         state = create_initial_state({"capacity": 4})
-        assert set(state["rule_pool"]) == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+        assert set(state["rule_pool"]) == {1, 2, 3, 4, 5, 6, 8, 9, 10}
 
 
 class TestPlayerJoin:

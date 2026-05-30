@@ -81,7 +81,7 @@ export function GameOverPhase({ state, playerId }: Props) {
     <section className="game-surface" aria-labelledby="bv-gameover-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">颜值投票</p>
+          <p className="eyebrow">美人投票</p>
           <h2 id="bv-gameover-title">游戏结束</h2>
         </div>
       </div>
@@ -97,7 +97,7 @@ export function GameOverPhase({ state, playerId }: Props) {
           }}
         >
           <p className="eyebrow">胜者</p>
-          <p style={{ fontSize: "1.4rem", fontWeight: 900, marginTop: 8 }}>
+          <p style={{ fontSize: "1.4rem", fontWeight: 900, marginTop: 8, overflowWrap: "anywhere" }}>
             {winner.nickname}
           </p>
           <p style={{ color: "var(--color-muted)", marginTop: 4 }}>
@@ -126,13 +126,14 @@ export function GameOverPhase({ state, playerId }: Props) {
         ) : (
           rankings.map((p) => (
             <div className="player-row" key={p.playerId}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
                 <span
                   style={{
                     fontWeight: 900,
                     fontSize: "1.1rem",
                     minWidth: 32,
                     textAlign: "center",
+                    flexShrink: 0,
                     color:
                       p.rank === 1
                         ? "var(--color-primary-strong)"
@@ -143,10 +144,10 @@ export function GameOverPhase({ state, playerId }: Props) {
                 >
                   #{p.rank}
                 </span>
-                <span>{p.nickname}</span>
+                <span style={{ overflowWrap: "anywhere", minWidth: 0 }}>{p.nickname}</span>
               </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <span style={{ fontWeight: 700 }}>{p.score} 分</span>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
+                <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{p.score} 分</span>
                 <StatusBadge tone={p.alive ? "success" : "neutral"}>
                   {p.alive ? "存活" : "淘汰"}
                 </StatusBadge>
@@ -168,7 +169,7 @@ export function GameOverPhase({ state, playerId }: Props) {
           >
             所有回合数字
           </h3>
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto", minWidth: 0 }}>
             <table
               style={{
                 width: "100%",

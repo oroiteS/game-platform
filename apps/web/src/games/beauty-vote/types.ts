@@ -47,7 +47,6 @@ export interface BeautyVoteState {
   currentT: number | null;
   lastT: number | null;
   forbiddenNumber: number | null;
-  inheritedNumber: number | null;
   activeRules: ActiveRules;
   rulesDisplay: RuleInfo[] | null;
   specialEvent: SpecialEvent | null;

@@ -59,12 +59,6 @@ RULE_META = {
         "domain": DOMAIN_INDEPENDENT,
         "description": "提交时可勾选使用杠杆。获胜+2分，未获胜-1分。",
     },
-    7: {
-        "id": 7,
-        "name": "数字继承",
-        "domain": DOMAIN_INDEPENDENT,
-        "description": "上回合淘汰者所选数字均值为继承数字，选继承数字者获胜+2分，失败扣分固定为1分。",
-    },
     8: {
         "id": 8,
         "name": "双重标准",

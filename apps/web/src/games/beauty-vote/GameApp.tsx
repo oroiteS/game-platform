@@ -58,21 +58,6 @@ export function BeautyVoteGame({ room, gameState, playerId, onAction }: Props) {
   const currentPlayer = state.players.find((p) => p.playerId === playerId);
   const isEliminated = currentPlayer && !currentPlayer.alive;
 
-  if (isEliminated && state.phase !== "ended") {
-    return (
-      <Panel>
-        <div style={{ textAlign: "center", padding: "24px 0" }}>
-          <p style={{ fontSize: "1.2rem", fontWeight: 600, margin: "0 0 8px" }}>
-            你已被淘汰
-          </p>
-          <p className="state-text">
-            你的分数已归零，请等待其他玩家完成游戏
-          </p>
-        </div>
-      </Panel>
-    );
-  }
-
   switch (state.phase) {
     case "lobby":
       return (
@@ -88,6 +73,7 @@ export function BeautyVoteGame({ room, gameState, playerId, onAction }: Props) {
         <SubmitPhase
           state={state}
           playerId={playerId}
+          isEliminated={!!isEliminated}
           onAction={onAction}
         />
       );

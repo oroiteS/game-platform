@@ -132,27 +132,6 @@ export function SettlementPanel({ state, playerId }: Props) {
             </div>
           )}
 
-          {/* Rule 7: Inheritance */}
-          {state.inheritedNumber != null && (
-            <div
-              style={{
-                fontSize: "0.85rem",
-                padding: "6px 10px",
-                borderRadius: 6,
-                background: "var(--color-surface-high)",
-              }}
-            >
-              继承数字：<strong>{state.inheritedNumber}</strong>
-              {alivePlayers.some(
-                (p) => p.lastNumber === state.inheritedNumber,
-              ) &&
-                ` — ${alivePlayers
-                  .filter((p) => p.lastNumber === state.inheritedNumber)
-                  .map((p) => p.nickname)
-                  .join("、")} 选择继承数字（失败仅扣1分）`}
-            </div>
-          )}
-
           {/* Rule 6: Leverage (own only) */}
           {state.mySubmission?.use_leverage && (
             <div

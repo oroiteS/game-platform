@@ -16,6 +16,7 @@ import type { BeautyVoteState } from "../types";
 type Props = {
   state: BeautyVoteState;
   playerId: string;
+  isEliminated: boolean;
   onAction: (action: { type: string; payload?: unknown }) => boolean;
 };
 
@@ -23,8 +24,9 @@ type Props = {
 // SubmitPhase
 // ---------------------------------------------------------------------------
 
-export function SubmitPhase({ state, playerId, onAction }: Props) {
+export function SubmitPhase({ state, playerId, isEliminated, onAction }: Props) {
   const isSubmitted = state.mySubmission !== null;
+  const isSpectating = isEliminated || isSubmitted;
 
   // Rule checks
   const hasRule5 = state.activeRules.target_value === 5;
@@ -74,8 +76,8 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
             第 {state.round} 回合 — 提交阶段
           </h2>
         </div>
-        <StatusBadge tone={isSubmitted ? "success" : "warning"}>
-          {isSubmitted ? "已提交" : "未提交"}
+        <StatusBadge tone={isEliminated ? "danger" : isSubmitted ? "success" : "warning"}>
+          {isEliminated ? "已淘汰" : isSubmitted ? "已提交" : "未提交"}
         </StatusBadge>
       </div>
 
@@ -88,23 +90,39 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
         <ScoreBoard players={state.players} />
       </div>
 
-      {isSubmitted ? (
-        /* Already submitted */
+      {isSpectating ? (
+        /* Spectating: eliminated or already submitted */
         <Panel>
-          <p className="state-text" style={{ textAlign: "center", fontSize: "0.95rem" }}>
-            已提交，等待其他玩家...
-          </p>
-          <p
-            className="state-text"
-            style={{ textAlign: "center", fontSize: "0.85rem" }}
-          >
-            请等待所有存活玩家提交
-          </p>
+          {isEliminated ? (
+            <>
+              <p className="state-text" style={{ textAlign: "center", fontSize: "0.95rem" }}>
+                你已被淘汰，分数已归零
+              </p>
+              <p
+                className="state-text"
+                style={{ textAlign: "center", fontSize: "0.85rem" }}
+              >
+                正在观看其他玩家提交
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="state-text" style={{ textAlign: "center", fontSize: "0.95rem" }}>
+                已提交，等待其他玩家...
+              </p>
+              <p
+                className="state-text"
+                style={{ textAlign: "center", fontSize: "0.85rem" }}
+              >
+                请等待所有存活玩家提交
+              </p>
+            </>
+          )}
         </Panel>
       ) : (
         /* Submission form */
         <div className="form-stack">
-          {/* Forbidden / Inherited reminders */}
+          {/* Forbidden reminder */}
           {state.forbiddenNumber !== null && (
             <div
               style={{
@@ -120,21 +138,6 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
               本轮禁区数字：{state.forbiddenNumber}（选择将被扣3分）
             </div>
           )}
-          {state.inheritedNumber !== null && (
-            <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid var(--color-primary)",
-                background: "var(--color-primary-soft)",
-                color: "var(--color-primary)",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-              }}
-            >
-              本轮继承数字：{state.inheritedNumber}（获胜+2分，失败固定-1分）
-            </div>
-          )}
 
           {/* Main number input */}
           <NumberInput
@@ -142,8 +145,8 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
             onChange={setNumber}
             min={0}
             max={100}
+            label="你的数字"
             forbiddenNumber={state.forbiddenNumber}
-            inheritedNumber={state.inheritedNumber}
           />
 
           {/* Rule 5: Reverse number */}
@@ -153,9 +156,9 @@ export function SubmitPhase({ state, playerId, onAction }: Props) {
               onChange={setReverseNumber}
               min={0}
               max={100}
+              label="反向数字"
               forbiddenNumber={state.forbiddenNumber}
-              inheritedNumber={state.inheritedNumber}
-            />
+              />
           )}
 
           {/* Rule 6: Use leverage */}

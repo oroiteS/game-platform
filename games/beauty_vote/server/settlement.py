@@ -99,9 +99,9 @@ def determine_winners_furthest(submissions, T, T2, state):
 
 def settle_round(state, submissions, winners, furthest, T, winloss_triggered,
                  special_event, betray_results):
-    """Run the 6-step settlement pipeline. Returns {playerId: score_delta}.
+    """Run the settlement pipeline. Returns {playerId: score_delta}.
 
-    Pipeline order: forbidden -> inheritance -> leverage -> betrayer -> precision -> double_points
+    Pipeline order: forbidden -> leverage -> betrayer -> precision -> double_points
     """
     alive_pids = [pid for pid, p in state["players"].items() if p.get("alive", True)]
     deltas = {pid: 0 for pid in alive_pids}
@@ -135,15 +135,7 @@ def settle_round(state, submissions, winners, furthest, T, winloss_triggered,
         else:
             deltas[pid] = -1
 
-    # Step 2: Inheritance reduction (Rule 7)
-    inherited = state.get("inherited_number")
-    if inherited is not None and 7 in state["active_rules"]["independent"]:
-        for pid in alive_pids:
-            sub = submissions.get(pid)
-            if sub and sub["number"] == inherited and pid not in winners and pid not in cannot_win:
-                deltas[pid] = -1
-
-    # Step 3: Leverage (Rule 6)
+    # Step 2: Leverage (Rule 6)
     if 6 in state["active_rules"]["independent"]:
         for pid in alive_pids:
             sub = submissions.get(pid)
@@ -153,7 +145,7 @@ def settle_round(state, submissions, winners, furthest, T, winloss_triggered,
                 elif not winloss_triggered:
                     deltas[pid] -= 1
 
-    # Step 4: Betrayer (Rule 9)
+    # Step 3: Betrayer (Rule 9)
     if 9 in state["active_rules"]["independent"] and not winloss_triggered:
         for pid in alive_pids:
             sub = submissions.get(pid)
@@ -169,7 +161,7 @@ def settle_round(state, submissions, winners, furthest, T, winloss_triggered,
                     betray_results[pid] = {"target": target, "success": False}
                     deltas[pid] -= 2
 
-    # Step 5: Precision prize (Rule 2)
+    # Step 4: Precision prize (Rule 2)
     if 2 in state["active_rules"]["independent"] and not winloss_triggered:
         T_rounded = round(T)
         winner_numbers = [submissions[w]["number"] for w in winners if w in submissions]
@@ -178,7 +170,7 @@ def settle_round(state, submissions, winners, furthest, T, winloss_triggered,
                 if pid not in winners and pid not in cannot_win and pid not in furthest:
                     deltas[pid] = -2
 
-    # Step 6: Double points (special event)
+    # Step 5: Double points (special event)
     if special_event and special_event["type"] == "double_points":
         for pid in deltas:
             deltas[pid] *= 2

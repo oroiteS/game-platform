@@ -40,7 +40,7 @@ export function RevealPhase({ state, playerId, onAction }: Props) {
       {/* Title area */}
       <div className="section-heading">
         <div>
-          <p className="eyebrow">颜值投票</p>
+          <p className="eyebrow">美人投票</p>
           <h2 id="bv-reveal-title">
             第 {state.round} 回合 · 结果揭晓
           </h2>

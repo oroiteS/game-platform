@@ -1,5 +1,4 @@
 import random
-import statistics
 from games.beauty_vote.server.constants import (
     INITIAL_SCORE, MAX_ROUNDS, CONSECUTIVE_NO_ELIMINATION_LIMIT,
 )
@@ -38,7 +37,6 @@ def _fresh_state(capacity=0):
         "current_T": None,
         "last_T": None,
         "forbidden_number": None,
-        "inherited_number": None,
         "total_eliminations": 0,
         "consecutive_no_elimination": 0,
         "active_rules": empty_active_rules(),
@@ -179,12 +177,8 @@ def _track_eliminations(state, eliminated_numbers):
     if eliminated_numbers:
         state["total_eliminations"] += len(eliminated_numbers)
         state["consecutive_no_elimination"] = 0
-        valid_nums = [n for n in eliminated_numbers if n is not None]
-        if valid_nums and 7 in state["active_rules"]["independent"]:
-            state["inherited_number"] = round(statistics.mean(valid_nums))
     else:
         state["consecutive_no_elimination"] += 1
-        state["inherited_number"] = None  # always clear when no eliminations
 
 
 def _end_round(state):
@@ -397,7 +391,6 @@ def get_state_snapshot(state, viewer):
         "currentT": state.get("current_T"),
         "lastT": state.get("last_T"),
         "forbiddenNumber": state.get("forbidden_number"),
-        "inheritedNumber": state.get("inherited_number"),
         "activeRules": state["active_rules"],
         "rulesDisplay": rules_display,
         "specialEvent": state.get("special_event"),

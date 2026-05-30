@@ -219,6 +219,7 @@ dd {
 .game-surface {
   display: grid;
   min-width: 0;
+  overflow-x: auto;
   gap: 18px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -484,7 +485,8 @@ dd {
 }
 
 .modal-dialog {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   width: min(720px, calc(100vw - 32px));
   max-height: min(760px, calc(100vh - 36px));
   overflow: hidden;
@@ -496,6 +498,7 @@ dd {
 
 .game-detail-modal {
   display: grid;
+  grid-template-rows: auto 1fr;
   min-height: 0;
   gap: 16px;
   padding: 20px;
@@ -590,9 +593,10 @@ dd {
   padding: 9px 0;
 }
 
-.player-row > span:first-child {
+.player-row > :first-child {
   min-width: 0;
   overflow-wrap: anywhere;
+  overflow: hidden;
 }
 
 .message-board {
