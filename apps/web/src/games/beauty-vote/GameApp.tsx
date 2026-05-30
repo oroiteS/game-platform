@@ -67,9 +67,11 @@ export function BeautyVoteGame({ room, gameState, playerId, onAction }: Props) {
       );
     case "submit":
       return (
-        <Panel>
-          <p>提交阶段（待实现）</p>
-        </Panel>
+        <SubmitPhase
+          state={state}
+          playerId={playerId}
+          onAction={onAction}
+        />
       );
     case "reveal":
       return (
