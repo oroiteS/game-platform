@@ -7,6 +7,7 @@ import { TextField } from "../components/ui/TextField";
 import { getRoom, joinRoom, type PlayerSummary, type RoomSummary } from "../api/client";
 import { LobbyDemo } from "../games/lobby-demo/LobbyDemo";
 import { FakePersonGame } from "../games/fake-person/FakePersonGame";
+import { BeautyVoteGame } from "../games/beauty-vote/GameApp";
 import { getRoomSession, saveRoomSession, type RoomSession } from "../platform/sessionStore";
 import { useRoomSocket, type SocketStatus } from "../platform/useRoomSocket";
 
@@ -278,6 +279,8 @@ export function RoomPage({ roomCode }: RoomPageProps) {
           {visibleRoom && session ? (
             visibleRoom.gameId === "fake-person" ? (
               <FakePersonGame room={visibleRoom} gameState={snapshot?.game} playerId={session.playerId} onAction={sendGameAction} />
+            ) : visibleRoom.gameId === "beauty-vote" ? (
+              <BeautyVoteGame room={visibleRoom} gameState={snapshot?.game} playerId={session.playerId} onAction={sendGameAction} />
             ) : (
               <LobbyDemo room={visibleRoom} gameState={snapshot?.game} onAction={sendGameAction} />
             )
