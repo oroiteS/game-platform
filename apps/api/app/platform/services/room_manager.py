@@ -120,16 +120,20 @@ class RoomManager:
         removed_room_codes: list[str] = []
 
         for room in self._storage.list_rooms():
-            if self._is_room_expired(
-                room,
-                cleanup_time,
-                room_ttl_seconds=room_ttl_seconds,
-                empty_room_ttl_seconds=empty_room_ttl_seconds,
-                waiting_room_ttl_seconds=waiting_room_ttl_seconds,
-                playing_room_ttl_seconds=playing_room_ttl_seconds,
-            ):
-                self._storage.delete_room(room.room_code)
-                removed_room_codes.append(room.room_code)
+            with self._lock_for_room(room.room_code):
+                current = self._storage.get_room(room.room_code)
+                if current is None:
+                    continue
+                if self._is_room_expired(
+                    current,
+                    cleanup_time,
+                    room_ttl_seconds=room_ttl_seconds,
+                    empty_room_ttl_seconds=empty_room_ttl_seconds,
+                    waiting_room_ttl_seconds=waiting_room_ttl_seconds,
+                    playing_room_ttl_seconds=playing_room_ttl_seconds,
+                ):
+                    self._storage.delete_room(current.room_code)
+                    removed_room_codes.append(current.room_code)
 
         return removed_room_codes
 
