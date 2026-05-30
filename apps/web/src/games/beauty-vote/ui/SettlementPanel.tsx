@@ -9,9 +9,8 @@ type Props = {
 const EVENT_LABELS: Record<string, string> = {
   number_storm: "数字风暴：所有数字被随机扰动±5",
   score_reset: "分数重置：所有分数被重置为平均值",
-  anonymity_break: "匿名破除：本轮数字公开",
   double_points: "双倍积分：所有分数变动翻倍",
-  lucky_exemption: "幸运豁免：随机一名玩家免于扣分",
+  lucky_exemption: "幸运豁免",
 };
 
 export function SettlementPanel({ state, playerId }: Props) {
@@ -217,6 +216,17 @@ export function SettlementPanel({ state, playerId }: Props) {
             >
               {EVENT_LABELS[state.specialEvent.type] ??
                 state.specialEvent.type}
+              {state.specialEvent.type === "lucky_exemption" &&
+                state.specialEvent.target_player && (
+                  <>
+                    ：<strong>
+                      {state.players.find(
+                        (p) => p.playerId === state.specialEvent?.target_player,
+                      )?.nickname ?? state.specialEvent.target_player}
+                    </strong>{" "}
+                    免于扣分
+                  </>
+                )}
             </div>
           )}
         </div>

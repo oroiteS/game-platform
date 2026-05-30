@@ -9,6 +9,7 @@ from games.beauty_vote.server.rules import (
 )
 from games.beauty_vote.server.events import (
     roll_special_event, apply_number_storm, apply_score_reset,
+    apply_lucky_exemption,
 )
 from games.beauty_vote.server.settlement import (
     calculate_T, apply_win_loss_alt, find_extreme_duplicates,
@@ -239,6 +240,10 @@ def _end_round(state):
 
     state["winner_ids"] = winners
     state["furthest_ids"] = furthest
+
+    # Apply lucky exemption (pick random player before settlement)
+    if special_event and special_event["type"] == "lucky_exemption":
+        apply_lucky_exemption(state, special_event)
 
     # Settlement pipeline
     betray_results = {}

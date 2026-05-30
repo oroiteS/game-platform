@@ -88,7 +88,6 @@ RULE_META = {
 SPECIAL_EVENT_TYPES = [
     "number_storm",
     "score_reset",
-    "anonymity_break",
     "double_points",
     "lucky_exemption",
 ]

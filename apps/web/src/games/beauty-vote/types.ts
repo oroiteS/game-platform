@@ -13,7 +13,7 @@ export interface ActiveRules {
 }
 
 export interface SpecialEvent {
-  type: "number_storm" | "score_reset" | "anonymity_break" | "double_points" | "lucky_exemption";
+  type: "number_storm" | "score_reset" | "double_points" | "lucky_exemption";
   target_player: string | null;
 }
 
